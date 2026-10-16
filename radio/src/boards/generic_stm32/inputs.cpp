@@ -40,10 +40,16 @@ __weak void pollKeys()
 
 __weak uint32_t readKeys()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  return 0;
+#endif
   return _read_keys();
 }
 
 __weak uint32_t readTrims()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  return 0;
+#endif
   return _read_trims();
 }

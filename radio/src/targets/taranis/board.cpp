@@ -158,7 +158,7 @@ void boardInit()
   bluetoothInit(BLUETOOTH_DEFAULT_BAUDRATE, true);
 #endif
 
-#if defined(MANUFACTURER_RADIOMASTER) && defined(STM32F407xx)
+#if (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) && defined(STM32F407xx) && !defined(SAOLALINK_DEVEBOX)
   void board_set_bor_level();
   board_set_bor_level();
 #endif
@@ -215,7 +215,9 @@ void boardInit()
   }
 #endif
 
-  keysInit();
+#if !defined(SAOLALINK_DEVEBOX)
+  keysInit(); // Pocket Enter on PA13 would disable SWD on the development board.
+#endif
   switchInit();
 
 #if defined(SALED_PWR_GPIO)
@@ -308,7 +310,7 @@ void boardOff()
   }
 #endif
 
-#if defined(MANUFACTURER_RADIOMASTER) && defined(STM32F407xx)
+#if (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) && defined(STM32F407xx)
   lcdInit(); 
 #endif
 

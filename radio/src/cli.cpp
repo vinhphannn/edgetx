@@ -2184,7 +2184,18 @@ int cliResetGT911(const char** argv)
 }
 #endif
 
+#if defined(SAOLALINK_DEVEBOX)
+static int cliDevBoard(const char **)
+{
+  cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000 | USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | volatile settings, no RF", (unsigned long)SystemCoreClock, sdMounted() ? "mounted" : "not mounted");
+  return 0;
+}
+#endif
+
 const CliCommand cliCommands[] = {
+#if defined(SAOLALINK_DEVEBOX)
+  { "devboard", cliDevBoard, "EdgeTX development board identity" },
+#endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },
   { "trim", cliTrim, "<label><+|-> [<ms>]" },

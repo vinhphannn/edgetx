@@ -76,7 +76,9 @@ void bootloaderInitApp()
 #endif
 
   pwrInit();
+#if !defined(SAOLALINK_DEVEBOX)
   keysInit();
+#endif
   delaysInit();
 
   bool boot_dfu = abnormalRebootGetCmd() == REBOOT_CMD_DFU; 
@@ -124,6 +126,12 @@ int  bootloaderMain()
 {
   // init hardware (may jump to app)
   bootloaderInitApp();
+
+#if defined(SAOLALINK_DEVEBOX)
+  extern void deveboxBootloaderDFU();
+  deveboxBootloaderDFU(); // EdgeTX USB DFU, application region only, no LCD/SD.
+  return 0;
+#endif
 
   // init screen
   bootloaderInitScreen();

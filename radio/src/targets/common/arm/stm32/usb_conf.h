@@ -95,7 +95,7 @@
 #endif
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
-#if defined(USB_GPIO_VBUS)
+#if defined(USB_GPIO_VBUS) && !defined(SAOLALINK_DEVEBOX)
 #define VBUS_SENSING_ENABLED
 #endif
 

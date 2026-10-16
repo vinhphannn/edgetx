@@ -78,7 +78,13 @@
 /*---------- -----------*/
 #define USBD_MAX_NUM_CONFIGURATION 1U
 /*---------- -----------*/
+#if defined(SAOLALINK_DEVEBOX)
+// DfuSe's complete sector map must fit as a UTF-16 USB string (2*N+2).
+// Truncating the final "128Kg" makes dfu-util reject the application region.
+#define USBD_MAX_STR_DESC_SIZ      128U
+#else
 #define USBD_MAX_STR_DESC_SIZ      98U
+#endif
 /*---------- -----------*/
 #define USBD_DEBUG_LEVEL           0U
 /*---------- -----------*/

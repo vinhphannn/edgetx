@@ -26,6 +26,10 @@
 #include "hal/audio_driver.h"
 
 #include "edgetx.h"
+#if defined(SAOLALINK_DEVEBOX) && !defined(HAPTIC)
+// The STM32 timer calls this hook even when the bare board has no haptic motor.
+void per5ms() {}
+#endif
 #include "lua/lua_states.h"
 
 #if defined(COLORLCD)
@@ -558,6 +562,14 @@ __attribute__((weak)) void customUIActions() {}
 
 void perMain()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  static tmr10ms_t last_led = 0;
+  if (get_tmr10ms() - last_led >= 50) {
+    last_led = get_tmr10ms();
+    GPIOA->MODER = (GPIOA->MODER & ~(3U << 2)) | (1U << 2);
+    GPIOA->ODR ^= (1U << 1); // Existing DevEBox LED, confirms EdgeTX main task runs.
+  }
+#endif
   DEBUG_TIMER_START(debugTimerPerMain1);
 
   checkSpeakerVolume();

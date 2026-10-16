@@ -1,0 +1,78 @@
+# SaolaLink V1 and DevEBox development target
+
+SaolaLink V1 starts from the RadioMaster Pocket hardware definition, with a
+separate identity and HAL overrides. The standard target uses a 12 MHz HSE.
+The DevEBox configuration uses an STM32F407VET6 with an 8 MHz HSE, 512 KiB
+flash and a 32 KiB bootloader region.
+
+## Build
+
+Use the toolchain and Python dependencies required by this EdgeTX checkout
+(Arm GNU 14.2.rel1). From the repository root:
+
+```sh
+cmake -S . -B build/saolalink-devebox \
+  -DPCB=X7 -DPCBREV=SAOLALINK_V1 \
+  -DSAOLALINK_HSE_HZ=8000000 -DSAOLALINK_DEVEBOX=ON \
+  -DCMAKE_BUILD_TYPE=Debug -DDEFAULT_MODE=2 -DTRANSLATIONS=EN \
+  -DUSE_FW_LTO=ON -DBOOTLOADER=ON \
+  -DFIRMWARE_STRIP_BOOTLOADER=OFF -DFIRMWARE_FORMAT_UF2=OFF
+cmake --build build/saolalink-devebox --target firmware --parallel 4
+```
+
+For the 12 MHz Pocket-compatible SaolaLink baseline, use
+`SAOLALINK_HSE_HZ=12000000` and `SAOLALINK_DEVEBOX=OFF` in a separate build
+directory. SaolaLink Studio lives outside this firmware repository and is
+not included here.
+
+## USB update workflow
+
+- Install `arm-none-eabi/bootloader.bin` once using STM32 ROM DFU at
+  `0x08000000` (BOOT0 high).
+- Set BOOT0 low. Hold the active-high PA0 key while resetting to enter the
+  SaolaLink USB DFU bootloader. Release the key after reset.
+- The loader exposes `@SaolaLink App /0x08008000/02*016Kg,01*064Kg,03*128Kg`.
+  Its callbacks permit accesses only to the application region, excluding
+  boot sectors. This is software protection, not option-byte protection.
+- Application updates start at `0x08008000` and must exclude the first
+  32768 bytes of the full bootloader-inclusive `firmware.bin`. Studio
+  generates this application-only file and validates its manifest/hash.
+  Never send the full image to the application address.
+- Reset manually after upload. Without PA0 held, a plausible application
+  vector table causes the loader to jump into EdgeTX. A blank/invalid vector
+  table keeps it in DFU; this check is not a complete image-integrity check.
+- The running application exposes USB CDC CLI (`0483:5740`). Send `devboard`
+  with LF ending for identity and SD mount status; `ls /` lists the SD root.
+  Both ROM and software DFU use `0483:df11`, distinguished by media name.
+
+## External hardware
+
+| Peripheral | Wiring |
+| --- | --- |
+| MicroSD SPI, 3.3 V | CS PB12, CLK PB13, MISO PB14, MOSI PB15, common GND |
+| SSD1309 OLED 128x64 SPI | SCK PC10, MOSI/SDA PC12, RES PD12, DC PC11, CS PA15 |
+| DevEBox status LED | PA1 toggles from the EdgeTX main task |
+| Recovery key | PA0, active high |
+
+The six-pin SD module has no card detect, so PD9 detection is disabled.
+Keep the onboard SDIO socket empty. The selected OLED module requires 5 V
+module power; verify that the actual module accepts 3.3 V SPI logic. OLED
+SPI runs at 2.625 MHz and both scan axes are reversed for a 180-degree
+rotation relative to the initial mounting. No external backlight is needed.
+
+## Development limits and observed results (2026-10-16)
+
+The user confirmed USB DFU application upload, a responding USB CDC CLI,
+SD FAT32 directory listing and OLED display output. The rotated image still
+requires user confirmation. Host-side Studio tests cover DFU media bounds,
+descriptor encoding and build/flash artifact validation; those tests reside
+with Studio outside this repository.
+
+The development profile uses volatile model/radio defaults, skips startup
+calibration and fatal SD dialogs, and sets internal/external RF modules to
+NONE. Keys/trims are suppressed to avoid floating inputs and preserve SWD.
+Power-button handling is bypassed; this configuration does not implement the
+discussed external latch shutdown workflow. USB presence is assumed because
+the board lacks the Pocket PA9 VBUS-sense connection. BOR option bytes are
+not automatically modified. USB-powered and externally powered 5 V rails
+must be isolated before combining supplies on the DevEBox board.

@@ -120,6 +120,9 @@ bool pwrForcePressed()
 
 bool pwrPressed()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  return false; // USB-powered board, no Pocket power button/latch installed.
+#endif
 #if defined(RADIO_C14) && defined(DEBUG_SEGGER_RTT)
   // Required to allow powering with USB the MCU for RTT flashing
   // and not have the radio turn itself off on power on

@@ -214,7 +214,7 @@
   #define INTMODULE_DMA_STREAM_IRQ         DMA2_Stream7_IRQn
   #define INTMODULE_DMA_STREAM_IRQHandler  DMA2_Stream7_IRQHandler
   #define INTMODULE_DMA_CHANNEL            LL_DMA_CHANNEL_4
-#elif defined(RADIO_ZORRO) || defined(RADIO_POCKET) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12) || defined(RADIO_T20V2) || defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD) || defined(RADIO_GX12) || defined(RADIO_BUMBLEBEE)
+#elif defined(RADIO_ZORRO) || (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12) || defined(RADIO_T20V2) || defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD) || defined(RADIO_GX12) || defined(RADIO_BUMBLEBEE)
 #if defined(RADIO_T20V2)  || defined(RADIO_BUMBLEBEE)
   #define INTMODULE_BOOTCMD_GPIO           GPIO_PIN(GPIOE, 4) // PE.04
   #define INTMODULE_PWR_GPIO               GPIO_PIN(GPIOC, 6) // PC.06
@@ -311,8 +311,8 @@
 #endif
 
 // External Module
-#if defined(PCBXLITE) || defined(PCBX9LITE) || defined(RADIO_X9DP2019) || defined(PCBX7ACCESS) || defined(RADIO_ZORRO) || defined(RADIO_POCKET) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12) || defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD) || defined(RADIO_T12MAX) || defined(RADIO_GX12)
-  #if defined(RADIO_X9DP2019) || defined(RADIO_X7ACCESS) || defined(RADIO_ZORRO)|| defined(RADIO_POCKET) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12)|| defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD)
+#if defined(PCBXLITE) || defined(PCBX9LITE) || defined(RADIO_X9DP2019) || defined(PCBX7ACCESS) || defined(RADIO_ZORRO) || (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12) || defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD) || defined(RADIO_T12MAX) || defined(RADIO_GX12)
+  #if defined(RADIO_X9DP2019) || defined(RADIO_X7ACCESS) || defined(RADIO_ZORRO)|| (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12)|| defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_TPROS) || defined(RADIO_V14) || defined(RADIO_V14LCD)
     #define EXTMODULE_PWR_GPIO          GPIO_PIN(GPIOD, 8) // PD.08
   #elif defined(PCBX9LITE)
     #define EXTMODULE_PWR_GPIO          GPIO_PIN(GPIOA, 8) // PA.08
@@ -535,7 +535,7 @@
 
 // Trainer / Trainee from the module bay
 #if defined(PCBX9LITE) || defined(PCBXLITE) || defined(RADIO_X9DP2019) || \
-  defined(PCBX7ACCESS) || defined(RADIO_ZORRO) || defined(RADIO_POCKET) || \
+  defined(PCBX7ACCESS) || defined(RADIO_ZORRO) || (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || \
   defined(RADIO_TX12MK2) || defined(RADIO_BOXER) || defined(RADIO_MT12) ||\
   defined(RADIO_T14) || defined(RADIO_T12MAX) || defined(RADIO_V14) || defined(RADIO_V14LCD) \
   || defined(RADIO_GX12)
@@ -694,7 +694,7 @@
 #define I2C_B1_GPIO_AF                  LL_GPIO_AF_4
 
 #if defined(PCBXLITE) || defined(PCBX9LITE) || defined(PCBX7ACCESS) || \
-    defined(RADIO_ZORRO) || defined(RADIO_POCKET) || defined(RADIO_X9DP2019) || \
+    defined(RADIO_ZORRO) || (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_X9DP2019) || \
     defined(RADIO_GX12) || defined(RADIO_V14) || defined(RADIO_V14LCD)
   #define I2C_B1_SCL_GPIO               GPIO_PIN(GPIOB, 8)  // PB.08
   #define I2C_B1_SDA_GPIO               GPIO_PIN(GPIOB, 9)  // PB.09
@@ -710,7 +710,7 @@
 #elif defined(PCBX7ACCESS)
   #define EEPROM_WP_GPIO                GPIOB
   #define EEPROM_WP_GPIO_PIN            LL_GPIO_PIN_5  // PB.05
-#elif defined(RADIO_ZORRO) || defined(RADIO_POCKET) || defined(RADIO_TX12MK2)|| \
+#elif defined(RADIO_ZORRO) || (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_TX12MK2)|| \
       defined(RADIO_BOXER) || defined(RADIO_GX12)
   #define EEPROM_WP_GPIO                GPIOD
   #define EEPROM_WP_GPIO_PIN            LL_GPIO_PIN_10  // PD.10
@@ -811,7 +811,7 @@
   #define AUDIO_MUTE_GPIO               GPIO_PIN(GPIOB, 1)
   #define AUDIO_MUTE_DELAY              500  // ms
   #define INVERTED_MUTE_PIN
-#elif defined(MANUFACTURER_RADIOMASTER) || defined(MANUFACTURER_JUMPER) || defined(RADIO_LR3PRO)
+#elif (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) || defined(MANUFACTURER_JUMPER) || defined(RADIO_LR3PRO)
   #define AUDIO_MUTE_GPIO               GPIO_PIN(GPIOE, 12)
   #define AUDIO_MUTE_DELAY              500  // ms
   #if defined(MANUFACTURER_JUMPER) || defined(RADIO_LR3PRO)
@@ -884,8 +884,8 @@
     #define BT_EN_GPIO                  GPIO_PIN(GPIOE, 15) // PE.15
   #elif defined(PCBX9LITES)
     #define BT_EN_GPIO                  GPIO_PIN(GPIOD, 14) // PD.14
-  #elif defined(MANUFACTURER_RADIOMASTER)
-    #if defined(RADIO_POCKET) || defined(RADIO_GX12)
+  #elif (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1))
+    #if (defined(RADIO_POCKET) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_GX12)
       #define BT_EN_GPIO                GPIO_PIN(GPIOA, 6) // PA.06
     #endif
   #else
@@ -907,4 +907,9 @@
     // To avoid change in modelsize, todo: remove me
     #define STORAGE_BLUETOOTH
   #endif
+#endif
+
+// Board-specific overrides apply after the shared Pocket-compatible HAL.
+#if defined(RADIO_SAOLALINKV1)
+  #include "saolalink_v1/hal_overrides.h"
 #endif

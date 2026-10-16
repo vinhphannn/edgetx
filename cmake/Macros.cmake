@@ -113,6 +113,10 @@ function(AddHardwareDefTarget output)
   #   DEPENDS ${HW_DEF_SRC} ${RADIO_DIRECTORY}/util/hw_defs/generate_hw_def.py
   # )
 
+  if(RADIO_SAOLALINKV1)
+    list(APPEND HW_DEF_GENERATED ${RADIO_SRC_DIR}/targets/taranis/saolalink_v1/hal_overrides.h)
+  endif()
+
   add_custom_command(OUTPUT ${output}.h
     COMMAND ${GEN_HW_DEFS} > ${output}.h
     DEPENDS ${HW_DEF_SRC} ${HW_DEF_GENERATED} ${RADIO_DIRECTORY}/util/hw_defs/generate_hw_def.py

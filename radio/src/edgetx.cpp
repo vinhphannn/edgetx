@@ -29,6 +29,9 @@
 #endif
 
 #include "edgetx.h"
+#if defined(SAOLALINK_DEVEBOX)
+#include "model_init.h"
+#endif
 #include "io/frsky_firmware_update.h"
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
@@ -431,7 +434,7 @@ void generalDefault()
   g_eeGeneral.rotEncMode = ROTARY_ENCODER_MODE_INVERT_BOTH;
 #endif
 
-#if defined(MANUFACTURER_RADIOMASTER)
+#if (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1))
   g_eeGeneral.audioMuteEnable = 1;
 #if defined(RADIO_TX15) || defined(RADIO_GX15)
   g_eeGeneral.backlightBright = 50; // Screen looks off if not set high enough
@@ -1557,6 +1560,9 @@ uint8_t startOptions = 0;
 void edgeTxInit()
 {
   TRACE("edgeTxInit");
+#if defined(SAOLALINK_DEVEBOX)
+  startOptions |= OPENTX_START_NO_SPLASH | OPENTX_START_NO_CALIBRATION | OPENTX_START_NO_CHECKS;
+#endif
 
 #if defined(COLORLCD)
   // SD_CARD_PRESENT() does not work properly on most
@@ -1583,6 +1589,9 @@ void edgeTxInit()
 #endif
 
   // Load radio.yml so radio settings can be used
+#if defined(SAOLALINK_DEVEBOX)
+  generalDefault(); // Bare board: volatile defaults, no storage warning dialog.
+#else
 #if defined(RTC_BACKUP_RAM)
   // Skip loading if EM startup and radio has RTC backup data
   if (!UNEXPECTED_SHUTDOWN())
@@ -1591,6 +1600,7 @@ void edgeTxInit()
   // No RTC backup - try and load even for EM startup
   storageReadRadioSettings(false);
 #endif
+#endif // SAOLALINK_DEVEBOX
 
 #if defined(GUI) && !defined(COLORLCD)
 #if LCD_W == 128
@@ -1619,7 +1629,16 @@ void edgeTxInit()
 #endif
 
   // SDCARD related stuff, only enable if normal boot
-  if (!UNEXPECTED_SHUTDOWN()) {
+#if defined(SAOLALINK_DEVEBOX)
+  // Probe the external SPI socket without blocking USB on missing/bad media.
+  // Keep model settings volatile until the remaining hardware is integrated.
+  sdInit();
+#endif
+  if (!UNEXPECTED_SHUTDOWN()
+#if defined(SAOLALINK_DEVEBOX)
+      && false
+#endif
+  ) {
 
     if (!sdMounted())
       sdInit();
@@ -1658,6 +1677,14 @@ void edgeTxInit()
 #endif
 
   // handling of storage for radios
+#if defined(SAOLALINK_DEVEBOX)
+  generalDefault();
+  setModelDefaults();
+  g_eeGeneral.USBMode = USB_SERIAL_MODE;
+  serialSetMode(SP_VCP, UART_MODE_CLI);
+  g_model.moduleData[INTERNAL_MODULE].type = MODULE_TYPE_NONE;
+  g_model.moduleData[EXTERNAL_MODULE].type = MODULE_TYPE_NONE;
+#else
 #if defined(RTC_BACKUP_RAM) && !defined(SIMU)
   if (UNEXPECTED_SHUTDOWN()) {
     // SDCARD not available, try to restore last model from RAM
@@ -1671,6 +1698,7 @@ void edgeTxInit()
 #else
   storageReadAll();
 #endif
+#endif // SAOLALINK_DEVEBOX
 
   initSerialPorts();
 

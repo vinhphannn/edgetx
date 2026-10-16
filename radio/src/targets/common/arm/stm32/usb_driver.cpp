@@ -58,7 +58,7 @@ extern "C" {
 
 // TODO: configured where needed
 #define DEFAULT_USB_MODE USB_MASS_STORAGE_MODE;
-#if defined(FIRMWARE_QSPI)
+#if defined(FIRMWARE_QSPI) || defined(SAOLALINK_DEVEBOX)
 static const USBD_DFU_MediaTypeDef* _dfu_media[USBD_DFU_MAX_ITF_NUM] = {nullptr};
 #endif
 
@@ -84,6 +84,11 @@ void setSelectedUsbMode(int mode)
 #if defined(USB_GPIO_VBUS)
 int usbPlugged()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  // Board has no VBUS sense on PA9. Dev profile assumes USB power and never
+  // uses this value for charge detection. Production requires real VBUS sense.
+  return 1;
+#endif
 #if defined(DEBUG_DISABLE_USB) && !defined(BOOT)
   return false;
 #endif
@@ -177,7 +182,7 @@ void usbStart()
       break;
 
 #if defined(BOOT)
-#if defined(FIRMWARE_QSPI)
+#if defined(FIRMWARE_QSPI) || defined(SAOLALINK_DEVEBOX)
     case USB_DFU_MODE:
       USBD_RegisterClass(&hUsbDevice, &USBD_DFU);
       for (unsigned i = 0; i < USBD_DFU_MAX_ITF_NUM; i++){
@@ -227,7 +232,7 @@ bool usbStarted()
 }
 
 #if defined(BOOT)
-#if defined(FIRMWARE_QSPI)
+#if defined(FIRMWARE_QSPI) || defined(SAOLALINK_DEVEBOX)
 int usbRegisterDFUMedia(const void* dfu_media)
 {
   for (unsigned i = 0; i < USBD_DFU_MAX_ITF_NUM; i++) {

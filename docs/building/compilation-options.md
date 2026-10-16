@@ -46,6 +46,7 @@ Selects a specific variant within a `PCB` target. Valid values depend on the sel
     | `MT12` | RadioMaster MT12 |
     | `GX12` | RadioMaster GX12 |
     | `POCKET` | RadioMaster Pocket |
+    | `SAOLALINK_V1` | Saolatek SaolaLink V1 (Pocket baseline) |
     | `T8` | RadioMaster T8 |
     | `COMMANDO8` | RadioMaster Commando 8 |
     | `T12` | Jumper T12 |

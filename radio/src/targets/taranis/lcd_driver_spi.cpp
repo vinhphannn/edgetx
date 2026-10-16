@@ -37,7 +37,7 @@
 
 #if OLED_SCREEN
   #define LCD_CONTRAST_OFFSET            0
-#elif defined(RADIO_FAMILY_JUMPER_T12) || defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_COMMANDO8) || defined(RADIO_TPRO) || defined(RADIO_T12MAX) || defined(RADIO_V14LCD)
+#elif defined(RADIO_FAMILY_JUMPER_T12) || (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) || defined(RADIO_COMMANDO8) || defined(RADIO_TPRO) || defined(RADIO_T12MAX) || defined(RADIO_V14LCD)
   #define LCD_CONTRAST_OFFSET            -10
 #else
   #define LCD_CONTRAST_OFFSET            160
@@ -166,8 +166,13 @@ void lcdStart()
    lcdWriteCommand(0x40);  // Set Display Start Line (0)
    lcdWriteCommand(0x8D);  // Set Charge Pump
    lcdWriteCommand(0x10);  // Charge Pump (0x10 External, 0x14 Internal DC/DC)
+#if defined(SAOLALINK_OLED_ROTATE_180)
+   lcdWriteCommand(0xA0);  // Reverse both axes relative to the default OLED mount.
+   lcdWriteCommand(0xC0);
+#else
    lcdWriteCommand(0xA1);  // Set Segment Re-Map (Reversed)
    lcdWriteCommand(0xC8);  // Set Com Output Scan Direction (Reversed)
+#endif
    lcdWriteCommand(0xDA);  // Set COM Hardware Configuration
    lcdWriteCommand(0x12);  // COM Hardware Configuration
    lcdWriteCommand(0xD9);  // Set Pre-Charge Period

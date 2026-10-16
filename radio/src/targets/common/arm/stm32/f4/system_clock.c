@@ -24,7 +24,15 @@
 #include "stm32f4xx_ll_system.h"
 #include "stm32f4xx_ll_bus.h"
 
+// Keep a 1 MHz PLL input for both the stock 12 MHz crystal and 8 MHz
+// development boards. HSE_VALUE is passed to firmware AND bootloader by CMake.
+#if HSE_VALUE == 8000000
+#define PLL_M LL_RCC_PLLM_DIV_8
+#elif HSE_VALUE == 12000000
 #define PLL_M LL_RCC_PLLM_DIV_12
+#else
+#error "Unsupported HSE_VALUE for the STM32F4 clock configuration"
+#endif
 #define PLL_N 336
 #define PLL_Q LL_RCC_PLLQ_DIV_7
 // #define PLL_P LL_RCC_PLLP_DIV_2
@@ -36,10 +44,10 @@
   *            SYSCLK(Hz)                     = 168000000
   *            HCLK(Hz)                       = 168000000
   *            AHB Prescaler                  = 1
-  *            APB1 Prescaler                 = 2
-  *            APB2 Prescaler                 = 1
-  *            HSE Frequency(Hz)              = 12000000
-  *            PLL_M                          = 12
+  *            APB1 Prescaler                 = 4
+  *            APB2 Prescaler                 = 2
+  *            HSE Frequency(Hz)              = HSE_VALUE (8 or 12 MHz)
+  *            PLL_M                          = HSE_VALUE / 1000000
   *            PLL_N                          = 336
   *            PLL_P                          = 2
   *            VDD(V)                         = 3.3

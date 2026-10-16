@@ -163,7 +163,7 @@ extern "C" {
 
 // Power driver
 #define SOFT_PWR_CTRL
-#if defined(PWR_BUTTON_PRESS) && !defined(RADIO_COMMANDO8)
+#if defined(PWR_BUTTON_PRESS) && !defined(RADIO_COMMANDO8) && !defined(SAOLALINK_DEVEBOX)
 #  define STARTUP_ANIMATION
 #endif
 
@@ -275,7 +275,7 @@ void ledBoot();
 #else
   #define LCD_CONTRAST_DEFAULT          15
 #endif
-#if OLED_SCREEN
+#if OLED_SCREEN && !defined(SSD1309_LCD)
   // add offset 2px because driver (SH1106) of the 1.3 OLED is for a 132 display
   #define LCD_W_OFFSET                  0x02
 #endif
@@ -334,7 +334,7 @@ void setTopBatteryValue(uint32_t volts);
 #if defined(RADIO_TLITE)
   #define BATTERY_DIVIDER 27500    // TODO: fix when we have proper schematics
   #define VOLTAGE_DROP 20
-#elif defined(MANUFACTURER_RADIOMASTER) || defined(MANUFACTURER_JUMPER)
+#elif (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) || defined(MANUFACTURER_JUMPER)
   // --- MOSFET ---- R1 --- MCU
   //                     |__ R2 --- GND
   //
