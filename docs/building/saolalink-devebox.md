@@ -70,9 +70,43 @@ with Studio outside this repository.
 
 The development profile uses volatile model/radio defaults, skips startup
 calibration and fatal SD dialogs, and sets internal/external RF modules to
-NONE. Keys/trims are suppressed to avoid floating inputs and preserve SWD.
+NONE. Six active-low menu keys are enabled through a DevEBox-specific driver:
+RTN PC5, PAGE< PD3, PAGE> PD7, TELE PD2, SYS PE10 (not Pocket PB4), MDL PE11.
+Enter, trims and rotary remain disabled to preserve SWD and avoid unwired
+inputs. The ADC/gimbal pin relocation to PC1/PC2 is not implemented yet.
+USB CLI logs debounced physical key transitions automatically. `buttons`
+or `buttons on` prints all six states and enables change logs; `buttons off`
+disables logs. Each key must be stable for 30 ms; physical-key sampling is
+performed in the CLI task with a 10 ms receive timeout. Long CLI commands
+can delay sampling. Log output is not retained for later terminal connections.
+Normal EdgeTX key processing remains separate from the CLI log filter.
 Power-button handling is bypassed; this configuration does not implement the
 discussed external latch shutdown workflow. USB presence is assumed because
 the board lacks the Pocket PA9 VBUS-sense connection. BOR option bytes are
 not automatically modified. USB-powered and externally powered 5 V rails
 must be isolated before combining supplies on the DevEBox board.
+
+## Checkpoint: physical navigation keys verified (2026-10-17)
+
+The user supplied USB CDC logs showing PRESSED GPIO=0 and RELEASED GPIO=1
+for all six wired keys: RTN PC5, PAGE> PD7, PAGE< PD3, TELE PD2, SYS PE10,
+and MDL PE11. This confirms the physical inputs and CLI transition reporting;
+the host test suite also checks GPIO mapping, independent debounce, simultaneous
+transitions and timer wrap. Holding a key does not repeatedly print changes.
+
+Next wiring plan, **not enabled by this checkpoint**:
+
+| Input | DevEBox pin |
+| --- | --- |
+| Rotary contact A | PE9 |
+| Rotary contact B | PE14 |
+| Rotary common C | GND |
+| Separate Enter switch | PD14 to GND, pull-up to 3.3 V |
+
+Do not use PE10 for rotary B: SYS now occupies that pin. Do not use PA13
+for Enter: retain SWDIO. The planned rotary B relocation needs matching
+GPIO, position-bit extraction and EXTI configuration changes before enabling
+the encoder. Enter also needs a driver update. A bare mechanical encoder
+requires no VCC connection; verify A/B/common and any independent switch
+with its datasheet or a continuity meter before soldering. Two mounting tabs
+are not automatically electrical common contacts.

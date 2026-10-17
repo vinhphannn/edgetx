@@ -60,6 +60,9 @@ rotenc_t rotaryEncoderGetValue()
 
 void rotaryEncoderCheck()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  return; // Encoder is not wired yet; suppress floating-input navigation.
+#endif
   // Value increment for each state transition of the RE pins
 #if defined(ROTARY_ENCODER_INVERTED)
   static int8_t reInc[4][4] = {
@@ -171,6 +174,9 @@ void rotaryEncoderStartPolling()
 
 void rotaryEncoderInit()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  return;
+#endif
 #if defined(ROTARY_ENCODER_POLLING)
   rotencPollMode = false;
 #endif

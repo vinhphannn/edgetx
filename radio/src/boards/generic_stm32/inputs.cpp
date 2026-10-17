@@ -25,13 +25,21 @@
 #include "stm32_gpio_driver.h"
 
 #include "stm32_keys.inc"
+#if defined(SAOLALINK_DEVEBOX)
+#include "targets/taranis/saolalink_v1/devebox_keys.h"
+#endif
 
 #define __weak __attribute__((weak))
 
 __weak void keysInit()
 {
+#if defined(SAOLALINK_DEVEBOX)
+  for (const auto& key : deveboxKeys)
+    gpio_init(key.gpio, GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
+#else
   _init_keys();
   _init_trims();
+#endif
 }
 
 __weak void pollKeys()
@@ -41,7 +49,11 @@ __weak void pollKeys()
 __weak uint32_t readKeys()
 {
 #if defined(SAOLALINK_DEVEBOX)
-  return 0;
+  uint32_t result = 0;
+  uint32_t pressed = deveboxReadButtons();
+  for (unsigned i = 0; i < 6; ++i)
+    if (pressed & (1U << i)) result |= 1U << deveboxKeys[i].key;
+  return result;
 #endif
   return _read_keys();
 }

@@ -215,9 +215,7 @@ void boardInit()
   }
 #endif
 
-#if !defined(SAOLALINK_DEVEBOX)
-  keysInit(); // Pocket Enter on PA13 would disable SWD on the development board.
-#endif
+  keysInit(); // DevEBox initializes only its six wired keys, preserving PA13 SWD.
   switchInit();
 
 #if defined(SALED_PWR_GPIO)

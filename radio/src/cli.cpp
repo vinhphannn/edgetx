@@ -45,6 +45,10 @@
 #include "tasks/mixer_task.h"
 
 #include "cli.h"
+#if defined(SAOLALINK_DEVEBOX)
+#include "targets/taranis/saolalink_v1/devebox_keys.h"
+#include "targets/taranis/saolalink_v1/button_monitor.h"
+#endif
 
 #include <ctype.h>
 #include <malloc.h>
@@ -2185,6 +2189,59 @@ int cliResetGT911(const char** argv)
 #endif
 
 #if defined(SAOLALINK_DEVEBOX)
+static bool buttonWatch = true;
+static bool buttonMonitorReady = false;
+static DeveboxButtonMonitor buttonMonitor;
+
+static void printButtons(uint32_t state, uint32_t mask, bool snapshot)
+{
+  for (unsigned i = 0; i < 6; ++i) {
+    if (!(mask & (1U << i))) continue;
+    const auto& key = deveboxKeys[i];
+    bool pressed = state & (1U << i);
+    cliSerialPrint("[BTN %lu ms] %s %s(%s) %s GPIO=%u", (unsigned long)time_get_ms(),
+                   snapshot ? "STATE" : "CHANGE", key.name, key.pin,
+                   pressed ? "PRESSED" : "RELEASED", pressed ? 0 : 1);
+  }
+}
+
+static void pollButtonMonitor()
+{
+  if (!cliSendCb || !buttonWatch) {
+    buttonMonitorReady = false;
+    return;
+  }
+  uint32_t raw = deveboxReadButtons();
+  uint32_t now = time_get_ms();
+  if (!buttonMonitorReady) {
+    buttonMonitor.reset(raw, now);
+    buttonMonitorReady = true;
+    printButtons(raw, 0x3F, true);
+  } else {
+    uint32_t changed = buttonMonitor.update(raw, now);
+    if (changed) printButtons(buttonMonitor.value(), changed, false);
+  }
+}
+
+static int cliButtons(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "off")) {
+    buttonWatch = false;
+    cliSerialPrint("Button monitor OFF");
+    return 0;
+  }
+  if (argv[1] && strcmp(argv[1], "on")) {
+    cliSerialPrint("Usage: buttons [on|off]");
+    return -1;
+  }
+  buttonWatch = true;
+  buttonMonitor.reset(deveboxReadButtons(), time_get_ms());
+  buttonMonitorReady = true;
+  cliSerialPrint("Button monitor ON (30ms debounce); active LOW, SYS=PE10; Enter/rotary disabled");
+  printButtons(buttonMonitor.value(), 0x3F, true);
+  return 0;
+}
+
 static int cliDevBoard(const char **)
 {
   cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000 | USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | volatile settings, no RF", (unsigned long)SystemCoreClock, sdMounted() ? "mounted" : "not mounted");
@@ -2195,6 +2252,7 @@ static int cliDevBoard(const char **)
 const CliCommand cliCommands[] = {
 #if defined(SAOLALINK_DEVEBOX)
   { "devboard", cliDevBoard, "EdgeTX development board identity" },
+  { "buttons", cliButtons, "[on|off] Six physical keys: state and automatic change logs" },
 #endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },
@@ -2328,9 +2386,16 @@ static void cliTask()
     // TODO: implement block read instead
     //       of going byte-by-byte.
     
-    /* Block for max 100ms. */
+    /* Poll physical development buttons even when no CLI input arrives. */
+#if defined(SAOLALINK_DEVEBOX)
+    const TickType_t xTimeout = pdMS_TO_TICKS(10);
+#else
     const TickType_t xTimeout = 100 / portTICK_PERIOD_MS;
+#endif
     size_t xReceivedBytes = xStreamBufferReceive(cliRxBuffer, &c, 1, xTimeout);
+#if defined(SAOLALINK_DEVEBOX)
+    pollButtonMonitor(); // Print from the CLI task only, never a GPIO/timer ISR.
+#endif
 
     if (!mixerTaskRunning()) {
       WDG_RESET();
