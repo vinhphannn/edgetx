@@ -51,7 +51,7 @@ __weak uint32_t readKeys()
 #if defined(SAOLALINK_DEVEBOX)
   uint32_t result = 0;
   uint32_t pressed = deveboxReadButtons();
-  for (unsigned i = 0; i < 6; ++i)
+  for (unsigned i = 0; i < deveboxKeyCount; ++i)
     if (pressed & (1U << i)) result |= 1U << deveboxKeys[i].key;
   return result;
 #endif

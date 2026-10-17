@@ -48,6 +48,7 @@
 #if defined(SAOLALINK_DEVEBOX)
 #include "targets/taranis/saolalink_v1/devebox_keys.h"
 #include "targets/taranis/saolalink_v1/button_monitor.h"
+#include "hal/rotary_encoder.h"
 #endif
 
 #include <ctype.h>
@@ -2192,10 +2193,34 @@ int cliResetGT911(const char** argv)
 static bool buttonWatch = true;
 static bool buttonMonitorReady = false;
 static DeveboxButtonMonitor buttonMonitor;
+static bool encoderMonitorReady = false;
+static uint8_t encoderLastPins;
+static rotenc_t encoderLastCount;
+
+static void printEncoder(bool force)
+{
+  uint8_t pins = ROTARY_ENCODER_POSITION;
+  rotenc_t count = rotaryEncoderGetValue();
+  int delta = encoderMonitorReady ? (rotenc_t)(count - encoderLastCount) : 0;
+  if (force || !encoderMonitorReady || pins != encoderLastPins || delta) {
+    cliSerialPrint("[ENC %lu ms] %s A(PE9)=%u B(PE14)=%u delta=%+d count=%d",
+                   (unsigned long)time_get_ms(), force ? "STATE" : "CHANGE",
+                   unsigned(pins & 1U), unsigned((pins >> 1) & 1U), delta, int(count));
+  }
+  encoderLastPins = pins;
+  encoderLastCount = count;
+  encoderMonitorReady = true;
+}
+
+static int cliEncoder(const char**)
+{
+  printEncoder(true);
+  return 0;
+}
 
 static void printButtons(uint32_t state, uint32_t mask, bool snapshot)
 {
-  for (unsigned i = 0; i < 6; ++i) {
+  for (unsigned i = 0; i < deveboxKeyCount; ++i) {
     if (!(mask & (1U << i))) continue;
     const auto& key = deveboxKeys[i];
     bool pressed = state & (1U << i);
@@ -2209,6 +2234,7 @@ static void pollButtonMonitor()
 {
   if (!cliSendCb || !buttonWatch) {
     buttonMonitorReady = false;
+    encoderMonitorReady = false;
     return;
   }
   uint32_t raw = deveboxReadButtons();
@@ -2216,11 +2242,12 @@ static void pollButtonMonitor()
   if (!buttonMonitorReady) {
     buttonMonitor.reset(raw, now);
     buttonMonitorReady = true;
-    printButtons(raw, 0x3F, true);
+    printButtons(raw, (1U << deveboxKeyCount) - 1, true);
   } else {
     uint32_t changed = buttonMonitor.update(raw, now);
     if (changed) printButtons(buttonMonitor.value(), changed, false);
   }
+  printEncoder(false);
 }
 
 static int cliButtons(const char** argv)
@@ -2237,8 +2264,9 @@ static int cliButtons(const char** argv)
   buttonWatch = true;
   buttonMonitor.reset(deveboxReadButtons(), time_get_ms());
   buttonMonitorReady = true;
-  cliSerialPrint("Button monitor ON (30ms debounce); active LOW, SYS=PE10; Enter/rotary disabled");
-  printButtons(buttonMonitor.value(), 0x3F, true);
+  cliSerialPrint("Input monitor ON: 7 keys (30ms debounce), ENTER=PD14; encoder A=PE9 B=PE14");
+  printButtons(buttonMonitor.value(), (1U << deveboxKeyCount) - 1, true);
+  printEncoder(true);
   return 0;
 }
 
@@ -2252,7 +2280,8 @@ static int cliDevBoard(const char **)
 const CliCommand cliCommands[] = {
 #if defined(SAOLALINK_DEVEBOX)
   { "devboard", cliDevBoard, "EdgeTX development board identity" },
-  { "buttons", cliButtons, "[on|off] Six physical keys: state and automatic change logs" },
+  { "buttons", cliButtons, "[on|off] Seven physical keys and encoder change logs" },
+  { "encoder", cliEncoder, "Physical encoder A/B levels and decoded count" },
 #endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },

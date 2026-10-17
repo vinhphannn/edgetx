@@ -4,6 +4,16 @@
 // Six-pin external SPI socket has no card-detect contact.
 #undef SD_PRESENT_GPIO
 
+// Keep PE10 for SYS. Encoder uses PE9 and PE14, including EXTI remapping.
+#undef ROTARY_ENCODER_GPIO_PIN_B
+#define ROTARY_ENCODER_GPIO_PIN_B LL_GPIO_PIN_14
+#undef ROTARY_ENCODER_POSITION
+#define ROTARY_ENCODER_POSITION (((ROTARY_ENCODER_GPIO->IDR >> 9) & 1U) | ((ROTARY_ENCODER_GPIO->IDR >> 13) & 2U))
+#undef ROTARY_ENCODER_EXTI_LINE2
+#define ROTARY_ENCODER_EXTI_LINE2 LL_EXTI_LINE_14
+#undef ROTARY_ENCODER_EXTI_SYS_LINE2
+#define ROTARY_ENCODER_EXTI_SYS_LINE2 LL_SYSCFG_EXTI_LINE14
+
 // External 128x64 SSD1309 SPI module, powered directly by its 5V supply.
 // Retain Pocket SPI3 pins; this module has no MCU-controlled OLED supply pin.
 #define SSD1309_LCD

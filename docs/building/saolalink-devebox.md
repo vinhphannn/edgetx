@@ -110,3 +110,32 @@ the encoder. Enter also needs a driver update. A bare mechanical encoder
 requires no VCC connection; verify A/B/common and any independent switch
 with its datasheet or a continuity meter before soldering. Two mounting tabs
 are not automatically electrical common contacts.
+
+## Encoder and Enter enabled
+
+After the six-key checkpoint, enable Enter PD14 and rotary PE9/PE14.
+Override rotary B's GPIO, EXTI line, SYSCFG line and packed position bits;
+PE10 remains SYS. Reuse the EdgeTX EXTI/timer decoder with granularity 2,
+including its suppression of rotary increments while Enter is held.
+Keep trims disabled and preserve PA13/PA14 SWD. The planned gimbal ADC
+relocation remains unimplemented.
+
+`buttons`/`buttons on` now snapshots seven keys plus the encoder. Automatic
+`[ENC]` logs show sampled A/B electrical levels, signed count delta and the
+decoded counter. `encoder` requests an immediate snapshot; `buttons off`
+stops automatic key and encoder logs. A/B log sampling occurs in the CLI
+task (10 ms receive timeout), so it may skip intermediate states during fast
+rotation or long CLI commands. Interrupt-based decoding remains independent
+of this log sampling. Key logs retain 30 ms filtering; A/B do not use that
+filter. Update the application only using the existing software DFU loader.
+
+### Hardware checkpoint — 2026-10-17
+
+The user confirmed rotary operation after the first change of encoder wiring.
+The initial assumption that the middle terminal was common was incorrect;
+the original logs showed only AB=11/10/00 and a count alternating between
+0 and 1 while turning in one direction. Keep MCU A=PE9 and B=PE14, with
+the actual encoder common connected to GND and separate pull-ups to 3.3 V.
+The exact physical terminal order has not been recorded; do not infer it
+from the encoder housing. Direction, counts per detent and Enter hardware
+validation should be recorded separately when confirmed.

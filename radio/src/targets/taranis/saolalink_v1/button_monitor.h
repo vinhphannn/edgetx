@@ -11,7 +11,7 @@ class DeveboxButtonMonitor {
   }
   uint32_t update(uint32_t raw, uint32_t now) {
     uint32_t changed = 0;
-    for (unsigned i = 0; i < 6; ++i) {
+    for (unsigned i = 0; i < 7; ++i) {
       uint32_t bit = 1U << i;
       if ((raw ^ candidate) & bit) {
         candidate ^= bit;
@@ -27,5 +27,5 @@ class DeveboxButtonMonitor {
   uint32_t value() const { return stable; }
  private:
   uint32_t candidate = 0, stable = 0;
-  uint32_t since[6] = {};
+  uint32_t since[7] = {};
 };
