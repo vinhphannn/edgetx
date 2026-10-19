@@ -1,6 +1,12 @@
 #pragma once
 
 #if defined(SAOLALINK_DEVEBOX)
+// External main-power latch: active-high NPN drive and active-low sense.
+#undef PWR_ON_GPIO
+#define PWR_ON_GPIO GPIO_PIN(GPIOD, 0)
+#undef PWR_SWITCH_GPIO
+#define PWR_SWITCH_GPIO GPIO_PIN(GPIOD, 1)
+
 // Six-pin external SPI socket has no card-detect contact.
 #undef SD_PRESENT_GPIO
 

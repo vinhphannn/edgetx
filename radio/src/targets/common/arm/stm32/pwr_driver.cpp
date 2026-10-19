@@ -25,8 +25,19 @@
 #include "hal/usb_driver.h"
 #include "stm32_gpio.h"
 
+#if defined(SAOLALINK_DEVEBOX) && !defined(BOOT)
+#include "os/time.h"
+#include "targets/taranis/saolalink_v1/power_button.h"
+static DeveboxPowerButton deveboxPowerButton;
+#endif
+
 void pwrInit()
 {
+#if defined(SAOLALINK_DEVEBOX) && !defined(BOOT)
+  // Latch battery power before LCD/SD initialization or scheduler startup.
+  pwrOn();
+  deveboxPowerButton.reset();
+#endif
 
 #if defined(SD_PRESENT_GPIO)
   gpio_init(SD_PRESENT_GPIO, GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
@@ -121,7 +132,11 @@ bool pwrForcePressed()
 bool pwrPressed()
 {
 #if defined(SAOLALINK_DEVEBOX)
-  return false; // USB-powered board, no Pocket power button/latch installed.
+#if defined(BOOT)
+  return false; // Keep the installed USB DFU loader's behavior unchanged.
+#else
+  return deveboxPowerButton.update(!gpio_read(PWR_SWITCH_GPIO), time_get_ms());
+#endif
 #endif
 #if defined(RADIO_C14) && defined(DEBUG_SEGGER_RTT)
   // Required to allow powering with USB the MCU for RTT flashing

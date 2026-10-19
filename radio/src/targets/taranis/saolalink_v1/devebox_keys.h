@@ -5,7 +5,7 @@
 #include "stm32_gpio.h"
 
 // Wired navigation keys, including Enter on PD14, not Pocket Enter (PA13).
-// Do not initialize trims on ADC pins reserved for upcoming gimbal wiring.
+// Do not initialize trims: PC1/PC2 are now the DevEBox RV/RH ADC inputs.
 struct DeveboxKey {
   gpio_t gpio;
   EnumKeys key;

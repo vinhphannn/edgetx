@@ -139,3 +139,57 @@ the actual encoder common connected to GND and separate pull-ups to 3.3 V.
 The exact physical terminal order has not been recorded; do not infer it
 from the encoder housing. Direction, counts per detent and Enter hardware
 validation should be recorded separately when confirmed.
+
+## Four Hall gimbals and USB ADC logs — 2026-10-19
+
+The DevEBox profile now uses LH=PA3/ADC1_IN3, LV=PA2/ADC1_IN2,
+RV=PC1/ADC1_IN11 and RH=PC2/ADC1_IN12. CMake derives a separate ADC JSON
+from the SaolaLink baseline and generates both conversion channels and analog
+GPIO initialization from it. The non-DevEBox baseline remains unchanged.
+PA0 remains the recovery key and PA1 the heartbeat LED. Trims stay disabled,
+so PC1/PC2 are not initialized as digital buttons. The previous sections
+describe earlier checkpoints; the ADC relocation is now implemented.
+
+`[JOY]` logs start automatically when a CLI connection is available. `joy`
+or `joy on` prints all four values and enables reporting; `joy off` disables
+only these logs. Values are 12-bit ADC (0..4095), before calibration but
+with the baseline LH/RH inversion retained. Changes accumulate against the
+last reported value, with a threshold of 16 counts and a minimum polling
+interval of 50 ms. This is a reporting filter only; ADC acquisition and mixer
+processing are unchanged. Long CLI commands can delay logging. Button and
+encoder logging remain independent. The user must verify axis directions,
+travel and noise on hardware. Flash the application with the existing USB
+bootloader; no bootloader update is required for this change.
+
+Host regression checks (using the build Python environment):
+`python -m unittest discover -s radio/util/tests -p test_saolalink_devebox.py -v`.
+
+## External power latch PD0/PD1 — 2026-10-19
+
+The application now asserts PD0 HIGH in pwrInit before LCD/SD initialization.
+PD0 drives the external latch's NPN through its base resistor. PD1 is an
+active-low input with pull-up, connected only to the isolated 3.3 V button
+sense branch. Do not connect the MOSFET gate or battery voltage to a GPIO.
+The startup button hold is ignored until a release has been stable for 30 ms;
+later presses are debounced for 30 ms. The default shutdown delay is 2 seconds.
+Normal EdgeTX shutdown closes logs and unmounts SD, then boardOff waits for
+button release before lowering HOLD. Keep the button held until boot/display
+startup completes. This development profile still uses volatile defaults:
+shutdown does not persist those defaults over existing RADIO/MODELS files.
+
+Automatic `[PWR]` logs show the button and HOLD level. `power` / `power on`
+prints a snapshot and enables logging; `power off` only disables logging,
+not physical power control. The existing bootloader remains compatible;
+upload only the application for this change. The user has confirmed the four
+gimbal inputs work. Following the battery/FET power-test instructions, the
+user reported successful operation and requested this checkpoint. The USB
+log also showed a 2.49-second PD1 press, release, ENTER confirmation and
+subsequent USB disconnection. No scope traces or voltage measurements were
+provided. Firmware build and all 26 host checks passed for this checkpoint.
+
+The USB stack still starts without PA9 VBUS sensing. For the shutdown USB
+confirmation only, use USB configured state instead of the always-present
+development fallback. A connected USB host can require ENTER confirmation;
+this is not a USB voltage/charger detector. USB 5 V can keep the MCU powered
+after HOLD goes LOW. Isolate USB and external buck 5 V before combining
+supplies on a board without reverse-current protection. RF remains disabled.

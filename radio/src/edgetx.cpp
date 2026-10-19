@@ -1272,6 +1272,8 @@ void edgeTxClose(uint8_t shutdown)
 
   logsClose();
 
+#if !defined(SAOLALINK_DEVEBOX)
+  // DevEBox still uses volatile defaults; do not persist them over SD settings.
   storageFlushCurrentModel();
 
   if (sessionTimer > 0) {
@@ -1281,6 +1283,7 @@ void edgeTxClose(uint8_t shutdown)
   }
 
   storageCheck(true);
+#endif
 
   uint32_t bye_start = time_get_ms();
   while (IS_PLAYING(ID_PLAY_PROMPT_BASE + AU_BYE)) {
@@ -1682,6 +1685,7 @@ void edgeTxInit()
   setModelDefaults();
   g_eeGeneral.USBMode = USB_SERIAL_MODE;
   serialSetMode(SP_VCP, UART_MODE_CLI);
+  g_eeGeneral.pwrOffSpeed = 0; // EdgeTX YAML delay 0 means hold for 2 seconds.
   g_model.moduleData[INTERNAL_MODULE].type = MODULE_TYPE_NONE;
   g_model.moduleData[EXTERNAL_MODULE].type = MODULE_TYPE_NONE;
 #else
@@ -1918,6 +1922,16 @@ bool pwrOffDueToInactivity()
   return inactivityShutdown;
 }
 
+static bool pwrUsbNeedsConfirmation()
+{
+#if defined(SAOLALINK_DEVEBOX)
+  extern bool deveboxUsbConfigured();
+  return deveboxUsbConfigured();
+#else
+  return usbPlugged() && getSelectedUsbMode() != USB_UNSELECTED_MODE;
+#endif
+}
+
 uint32_t pwrCheck()
 {
   const char * message = nullptr;
@@ -1940,7 +1954,7 @@ uint32_t pwrCheck()
   if (pwrPressed()) {
     bool needConfirm =
         (TELEMETRY_STREAMING() && !g_eeGeneral.disableRssiPoweroffAlarm) ||
-        (usbPlugged() && getSelectedUsbMode() != USB_UNSELECTED_MODE) ||
+        pwrUsbNeedsConfirmation() ||
         (isTrainerConnected() && !g_eeGeneral.disableTrainerPoweroffAlarm);
     if (!needConfirm) {
 #if defined(HAPTIC)
@@ -1983,7 +1997,7 @@ uint32_t pwrCheck()
       }
       if (get_tmr10ms() - pwr_press_time > PWR_PRESS_SHUTDOWN_DELAY()) {
 #if defined(COLORLCD)
-        bool usbConfirmed = !usbPlugged() || getSelectedUsbMode() == USB_UNSELECTED_MODE;
+        bool usbConfirmed = !pwrUsbNeedsConfirmation();
         bool modelConnectedConfirmed = !TELEMETRY_STREAMING() || g_eeGeneral.disableRssiPoweroffAlarm;
         bool trainerConfirmed = !isTrainerConnected();
 #endif
@@ -1991,7 +2005,7 @@ uint32_t pwrCheck()
         while (1)
 #else
         while (
-            (usbPlugged() && getSelectedUsbMode() != USB_UNSELECTED_MODE) ||
+            pwrUsbNeedsConfirmation() ||
             (TELEMETRY_STREAMING() && !g_eeGeneral.disableRssiPoweroffAlarm) ||
             (isTrainerConnected() && !g_eeGeneral.disableTrainerPoweroffAlarm))
 #endif
@@ -2006,7 +2020,7 @@ uint32_t pwrCheck()
 
           const char* msg = STR_MODEL_STILL_POWERED;
           uint8_t msg_len = strlen(STR_MODEL_STILL_POWERED);
-          if (usbPlugged() && getSelectedUsbMode() != USB_UNSELECTED_MODE) {
+          if (pwrUsbNeedsConfirmation()) {
             msg = STR_USB_STILL_CONNECTED;
             msg_len = strlen(STR_USB_STILL_CONNECTED);
           }

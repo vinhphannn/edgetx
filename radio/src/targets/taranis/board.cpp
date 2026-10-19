@@ -215,7 +215,7 @@ void boardInit()
   }
 #endif
 
-  keysInit(); // DevEBox initializes only its six wired keys, preserving PA13 SWD.
+  keysInit(); // DevEBox initializes seven wired keys; trims stay disabled for ADC/SWD.
   switchInit();
 
 #if defined(SALED_PWR_GPIO)

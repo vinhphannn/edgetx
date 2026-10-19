@@ -231,6 +231,15 @@ bool usbStarted()
   return usbDriverStarted;
 }
 
+#if defined(SAOLALINK_DEVEBOX) && !defined(BOOT)
+// No PA9 VBUS sense: enumeration, rather than usbPlugged()'s development
+// fallback, determines whether shutdown needs a USB confirmation dialog.
+bool deveboxUsbConfigured()
+{
+  return usbDriverStarted && hUsbDevice.dev_state == USBD_STATE_CONFIGURED;
+}
+#endif
+
 #if defined(BOOT)
 #if defined(FIRMWARE_QSPI) || defined(SAOLALINK_DEVEBOX)
 int usbRegisterDFUMedia(const void* dfu_media)

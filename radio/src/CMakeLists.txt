@@ -148,7 +148,11 @@ AddHWGenTarget(${HW_DESC_JSON} lua_keys lua_keys.inc)
 
 AddHWGenTarget(${HW_DESC_JSON} stm32_keys stm32_keys.inc)
 AddHWGenTarget(${HW_DESC_JSON} stm32_switches stm32_switches.inc)
-AddHWGenTarget(${HW_DESC_JSON} stm32_adc_inputs stm32_adc_inputs.inc)
+set(ADC_HW_DESC_JSON ${HW_DESC_JSON})
+if(RADIO_SAOLALINKV1 AND SAOLALINK_DEVEBOX)
+  include(targets/taranis/saolalink_v1/adc_devebox.cmake)
+endif()
+AddHWGenTarget(${ADC_HW_DESC_JSON} stm32_adc_inputs stm32_adc_inputs.inc)
 AddHWGenTarget(${HW_DESC_JSON} stm32_pwm_inputs stm32_pwm_inputs.inc)
 
 AddHWGenTarget(${HW_DESC_JSON} simu_keys simu_keys.inc)

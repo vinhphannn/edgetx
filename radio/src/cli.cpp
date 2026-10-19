@@ -48,6 +48,7 @@
 #if defined(SAOLALINK_DEVEBOX)
 #include "targets/taranis/saolalink_v1/devebox_keys.h"
 #include "targets/taranis/saolalink_v1/button_monitor.h"
+#include "targets/taranis/saolalink_v1/gimbal_monitor.h"
 #include "hal/rotary_encoder.h"
 #endif
 
@@ -2218,6 +2219,122 @@ static int cliEncoder(const char**)
   return 0;
 }
 
+static bool joyWatch = true;
+static bool joyMonitorReady = false;
+static DeveboxGimbalMonitor joyMonitor;
+
+static void printGimbals(bool force)
+{
+  static const char* const names[] = {
+    "LH(PA3/ADC1_IN3)", "LV(PA2/ADC1_IN2)",
+    "RV(PC1/ADC1_IN11)", "RH(PC2/ADC1_IN12)"
+  };
+  static_assert(ADC_MAIN_LH == 0 && ADC_MAIN_LV == 1 &&
+                ADC_MAIN_RV == 2 && ADC_MAIN_RH == 3, "Unexpected stick order");
+  uint16_t values[DeveboxGimbalMonitor::count];
+  for (unsigned i = 0; i < DeveboxGimbalMonitor::count; ++i)
+    values[i] = adcGetInputValue(ADC_INPUT_MAIN, i);
+  uint32_t now = time_get_ms();
+  bool snapshot = force || !joyMonitorReady;
+  uint32_t changed;
+  if (snapshot) {
+    joyMonitor.reset(values, now);
+    joyMonitorReady = true;
+    changed = (1U << DeveboxGimbalMonitor::count) - 1;
+  } else {
+    changed = joyMonitor.update(values, now);
+  }
+  for (unsigned i = 0; i < DeveboxGimbalMonitor::count; ++i) {
+    if (!(changed & (1U << i))) continue;
+    cliSerialPrint("[JOY %lu ms] %s %s adc=%u delta=%+d",
+                   (unsigned long)now, snapshot ? "STATE" : "CHANGE", names[i],
+                   unsigned(values[i]), joyMonitor.delta(i, values[i]));
+    joyMonitor.reported(i, values[i]);
+  }
+}
+
+static void pollGimbalMonitor()
+{
+  if (!cliSendCb || !joyWatch) {
+    joyMonitorReady = false;
+    return;
+  }
+  printGimbals(false);
+}
+
+static int cliJoy(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "off")) {
+    joyWatch = false;
+    joyMonitorReady = false;
+    cliSerialPrint("Joy monitor OFF");
+    return 0;
+  }
+  if (argv[1] && strcmp(argv[1], "on")) {
+    cliSerialPrint("Usage: joy [on|off]");
+    return -1;
+  }
+  joyWatch = true;
+  cliSerialPrint("Joy monitor ON: ADC 0..4095 before calibration, Pocket LH/RH inversion retained; threshold 16, interval 50ms");
+  printGimbals(true);
+  return 0;
+}
+
+static bool powerWatch = true;
+static bool powerMonitorReady = false;
+static DeveboxButtonMonitor powerMonitor;
+
+static void printPower(bool force)
+{
+  uint32_t now = time_get_ms();
+  uint32_t raw = (!gpio_read(PWR_SWITCH_GPIO) ? 1U : 0U) |
+                 (gpio_read(PWR_ON_GPIO) ? 2U : 0U);
+  bool snapshot = force || !powerMonitorReady;
+  uint32_t changed;
+  if (snapshot) {
+    powerMonitor.reset(raw, now);
+    powerMonitorReady = true;
+    changed = 3;
+  } else {
+    changed = powerMonitor.update(raw, now);
+  }
+  if (changed) {
+    uint32_t state = powerMonitor.value();
+    bool pressed = state & 1U;
+    cliSerialPrint("[PWR %lu ms] %s BUTTON(PD1) %s GPIO=%u HOLD(PD0)=%u",
+                   (unsigned long)now, snapshot ? "STATE" : "CHANGE",
+                   pressed ? "PRESSED" : "RELEASED", pressed ? 0U : 1U,
+                   unsigned((state >> 1) & 1U));
+  }
+}
+
+static void pollPowerMonitor()
+{
+  if (!cliSendCb || !powerWatch) {
+    powerMonitorReady = false;
+    return;
+  }
+  printPower(false);
+}
+
+static int cliPower(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "off")) {
+    powerWatch = false;
+    powerMonitorReady = false;
+    cliSerialPrint("Power monitor OFF (button control remains enabled)");
+    return 0;
+  }
+  if (argv[1] && strcmp(argv[1], "on")) {
+    cliSerialPrint("Usage: power [on|off] (logging only)");
+    return -1;
+  }
+  powerWatch = true;
+  cliSerialPrint("Power monitor ON: PD0 HIGH=HOLD, PD1 LOW=PRESSED; release startup press before shutdown; hold 2s then release");
+  printPower(true);
+  return 0;
+}
+
 static void printButtons(uint32_t state, uint32_t mask, bool snapshot)
 {
   for (unsigned i = 0; i < deveboxKeyCount; ++i) {
@@ -2282,6 +2399,8 @@ const CliCommand cliCommands[] = {
   { "devboard", cliDevBoard, "EdgeTX development board identity" },
   { "buttons", cliButtons, "[on|off] Seven physical keys and encoder change logs" },
   { "encoder", cliEncoder, "Physical encoder A/B levels and decoded count" },
+  { "joy", cliJoy, "[on|off] Four gimbal ADC values and automatic change logs" },
+  { "power", cliPower, "[on|off] PD1 button / PD0 HOLD logs; does not switch power" },
 #endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },
@@ -2424,6 +2543,8 @@ static void cliTask()
     size_t xReceivedBytes = xStreamBufferReceive(cliRxBuffer, &c, 1, xTimeout);
 #if defined(SAOLALINK_DEVEBOX)
     pollButtonMonitor(); // Print from the CLI task only, never a GPIO/timer ISR.
+    pollGimbalMonitor();
+    pollPowerMonitor();
 #endif
 
     if (!mixerTaskRunning()) {
