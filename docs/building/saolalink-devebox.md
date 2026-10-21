@@ -262,3 +262,97 @@ MCU. Reversing the two track ends reverses direction. The inherited P1
 mapping also inverts its ADC reading. Only one potentiometer is currently
 defined. CLI automatic logs cover buttons/encoder, four gimbals, power and
 RF; switch/S1 change logging has not been added in this checkpoint.
+
+## RTN bootloader entry — 2026-10-21
+
+This supersedes the PA0/KEY entry described in older checkpoints. Hold the
+wired RTN button (PC5 LOW) before power-on or RESET to stay in USB DFU.
+Release it once `@SaolaLink App` appears; DFU stays active until reset, with
+no automatic timeout. Reset without RTN after upload to start EdgeTX.
+Pressing RTN in the running application remains a normal menu action and
+does not reboot or enable flashing. PA0 no longer selects this bootloader.
+Normal boot does not add a USB waiting window. Invalid app vectors still
+select recovery without requiring RTN.
+
+The bootloader configures only PC5 as an input with pull-up in its early
+hook, before the existing input settling delay. RTN wiring stays PC5 to
+GND with its existing 3V3 pull-up; ADC, trim and other key GPIOs are not
+initialized by this hook. RF power remains OFF in the bootloader.
+
+Install the new `bootloader.bin` **once via STM32 ROM DFU**: BOOT0=1,
+reset/connect USB, select `@Internal Flash`, then Flash bootloader in
+Studio. Return BOOT0=0, hold RTN at power-on/reset, select `@SaolaLink App`
+and upload only `application.bin`. Updating application alone cannot
+replace the installed bootloader; the previous one still uses PA0 until
+this migration. Studio's selector/upload workflow is otherwise unchanged.
+Host regression compiles the actual entry hook and tests active-low RTN,
+PA0 independence, preservation of unrelated GPIOs and invalid-vector recovery.
+
+## Wired switches and two potentiometers — 2026-10-21
+
+This supersedes the earlier switch wiring table. The user has wired SA
+PC13 (2POS), SB PA5/PE15 (3POS), SC PD11 (now 2POS) and SD PE8 (2POS).
+PE0 is no longer a switch input; SE/PE7 is removed. S1 remains PB0 ADC1_IN8
+(inverted), and new S2 is PA6 ADC1_IN6 (normal). Both FLEX inputs default to
+POT and appear in the normal EdgeTX source lists. BLUETOOTH must be OFF to
+leave PA6 available. GPIO switches retain input pull-ups.
+
+All generated input tables use the DevEBox-derived JSON consistently,
+including ADC/DMA, HAL counts/offsets, switches, and YAML/Lua source names.
+S2 is inserted before battery inputs so calibrated and battery channels do
+not become misaligned. The Pocket-compatible source JSON is unchanged.
+
+USB CLI automatically prints snapshots on connect and change events:
+`switches [on|off]` controls SA/SB/SC/SD logging with 30 ms contact debounce.
+For SB, GPIO_H=PA5 and GPIO_L=PE15: 11=MID, 01=DOWN, 10=UP, 00=INVALID.
+`pots [on|off]` controls S1/S2 logging, showing 12-bit ADC values before
+calibration (after the per-input inversion). It uses cumulative 16-count
+thresholds and a 50 ms minimum sampling interval. Filters affect only CLI
+reporting, not switch/ADC/mixer behavior. OFF only disables the selected log.
+No printing is done in ISR paths.
+
+Host tests execute generated switch initialization and the STM32 position
+driver, validate ADC/HAL offsets and YAML/Lua exposure, and execute the real
+CLI monitors for bounce, simultaneous changes, invalid SB contacts, pot
+noise/movement, log control and reconnect snapshots. Hardware still needs
+user verification after application upload. No bootloader update is needed
+for this switch/pot change.
+
+## OLED enclosure orientation — 2026-10-21
+
+The user mounted the OLED rotated 180 degrees relative to its previous
+installation. Disable SAOLALINK_OLED_ROTATE_180 in the DevEBox override:
+SSD1309 now uses segment remap 0xA1 and COM scan 0xC8 instead of 0xA0/0xC0.
+This turns the currently displayed image another 180 degrees, without
+changing the framebuffer, wiring or other targets. Update application only.
+S2 wiring is being checked by the user; its ADC and log filter are unchanged.
+
+## User-verified checkpoint and persistence diagnosis — 2026-10-21
+
+The user reports the current hardware integration is working after the
+display orientation update and requests a Git checkpoint. This includes
+RTN bootloader entry, four wired switches and two analog potentiometers,
+USB change logging, and the enclosure OLED orientation. Host checks pass
+(10 firmware/control tests and 22 Studio tests); the application build is
+472280 bytes. No new receiver/binding or RF power measurements were supplied.
+
+Calibration and stick mode are lost after a power cycle because the DevEBox
+startup still uses the earlier volatile bring-up path in `edgetx.cpp`:
+
+- It calls `generalDefault()` instead of `storageReadRadioSettings(false)`.
+- It calls `generalDefault()` again and `setModelDefaults()` instead of
+  `storageReadAll()`, then forces USB CLI and the internal RF defaults.
+- It excludes `storageFlushCurrentModel()` and `storageCheck(true)` during
+  shutdown. The normal SD/log initialization block is also bypassed.
+
+This is not evidence of a bad SD card. Importantly, the background dirty
+settings writer in `main.cpp` is still active: calibration marks EE_GENERAL
+dirty and may write `/RADIO/radio.yml`, but the next startup ignores that
+file. Do not assume volatile bring-up prevents every SD settings write or
+that merely adding a shutdown flush will solve the problem.
+
+The required follow-up is to restore the normal SD-backed settings/model
+load/save lifecycle, apply development defaults only when creating new
+settings, and verify calibration/stick mode/model selection across shutdown
+and restart. Persistence behavior is unchanged in this checkpoint; this
+entry records the diagnosis rather than claiming a fix or hardware test.

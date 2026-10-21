@@ -132,34 +132,35 @@ add_definitions(
 )
 
 set(HW_DESC_JSON ${FLAVOUR}.json)
-
-# Generate files from radio JSON
-AddHWGenTarget(${HW_DESC_JSON} hal_settings hal_settings.h)
-AddHWGenTarget(${HW_DESC_JSON} hal_pwm_sticks hal_pwm_sticks.h)
-
-AddHWGenTarget(${HW_DESC_JSON} hal_keys hal_keys.inc)
-AddHWGenTarget(${HW_DESC_JSON} hal_adc_inputs hal_adc_inputs.inc)
-
-AddHWGenTarget(${HW_DESC_JSON} yaml_inputs yaml_inputs.inc)
-
-AddHWGenTarget(${HW_DESC_JSON} lua_inputs lua_inputs.inc)
-AddHWGenTarget(${HW_DESC_JSON} lua_mixsrc lua_mixsrc.inc)
-AddHWGenTarget(${HW_DESC_JSON} lua_keys lua_keys.inc)
-
-AddHWGenTarget(${HW_DESC_JSON} stm32_keys stm32_keys.inc)
-AddHWGenTarget(${HW_DESC_JSON} stm32_switches stm32_switches.inc)
-set(ADC_HW_DESC_JSON ${HW_DESC_JSON})
+set(HW_INPUT_DESC_JSON ${HW_DESC_JSON})
 if(RADIO_SAOLALINKV1 AND SAOLALINK_DEVEBOX)
   include(targets/taranis/saolalink_v1/adc_devebox.cmake)
+  set(HW_INPUT_DESC_JSON ${ADC_HW_DESC_JSON})
 endif()
-AddHWGenTarget(${ADC_HW_DESC_JSON} stm32_adc_inputs stm32_adc_inputs.inc)
-AddHWGenTarget(${HW_DESC_JSON} stm32_pwm_inputs stm32_pwm_inputs.inc)
 
-AddHWGenTarget(${HW_DESC_JSON} simu_keys simu_keys.inc)
-AddHWGenTarget(${HW_DESC_JSON} simu_switches simu_switches.inc)
+# Generate files from radio JSON
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_settings hal_settings.h)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_pwm_sticks hal_pwm_sticks.h)
 
-AddHWGenTarget(${HW_DESC_JSON} hal_keys_lock hal_keys_lock.h)
-AddHWGenTarget(${HW_DESC_JSON} hal_usb_descriptor usb_descriptor.h)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_keys hal_keys.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_adc_inputs hal_adc_inputs.inc)
+
+AddHWGenTarget(${HW_INPUT_DESC_JSON} yaml_inputs yaml_inputs.inc)
+
+AddHWGenTarget(${HW_INPUT_DESC_JSON} lua_inputs lua_inputs.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} lua_mixsrc lua_mixsrc.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} lua_keys lua_keys.inc)
+
+AddHWGenTarget(${HW_INPUT_DESC_JSON} stm32_keys stm32_keys.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} stm32_switches stm32_switches.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} stm32_adc_inputs stm32_adc_inputs.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} stm32_pwm_inputs stm32_pwm_inputs.inc)
+
+AddHWGenTarget(${HW_INPUT_DESC_JSON} simu_keys simu_keys.inc)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} simu_switches simu_switches.inc)
+
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_keys_lock hal_keys_lock.h)
+AddHWGenTarget(${HW_INPUT_DESC_JSON} hal_usb_descriptor usb_descriptor.h)
 
 add_dependencies(board hal_settings hal_pwm_sticks hal_keys hal_keys_lock hal_adc_inputs stm32_keys stm32_switches stm32_adc_inputs stm32_pwm_inputs yaml_inputs lua_inputs lua_mixsrc lua_keys)
 add_dependencies(board_bl hal_settings hal_pwm_sticks hal_keys stm32_keys)

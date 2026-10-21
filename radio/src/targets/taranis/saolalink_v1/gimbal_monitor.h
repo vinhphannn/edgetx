@@ -3,9 +3,10 @@
 #include <stdint.h>
 
 // CLI-only reporting filter; does not change ADC acquisition or mixer values.
-class DeveboxGimbalMonitor {
+template<unsigned N>
+class DeveboxAnalogMonitor {
  public:
-  static constexpr unsigned count = 4;
+  static constexpr unsigned count = N;
   static constexpr uint16_t threshold = 16; // 12-bit ADC counts, cumulative
   static constexpr uint32_t intervalMs = 50;
 
@@ -32,3 +33,6 @@ class DeveboxGimbalMonitor {
   uint16_t last[count] = {};
   uint32_t sampledAt = 0;
 };
+
+using DeveboxGimbalMonitor = DeveboxAnalogMonitor<4>;
+using DeveboxPotMonitor = DeveboxAnalogMonitor<2>;

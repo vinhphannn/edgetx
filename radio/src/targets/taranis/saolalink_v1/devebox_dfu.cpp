@@ -60,6 +60,6 @@ void deveboxBootloaderDFU()
   usbRegisterDFUMedia(&media);
   setSelectedUsbMode(USB_DFU_MODE);
   usbStart();
-  // Reset after upload to start EdgeTX; PA0+RESET re-enters this loader.
+  // Reset after upload to start EdgeTX; hold RTN at power-on/reset to re-enter.
   for (;;) __WFI();
 }

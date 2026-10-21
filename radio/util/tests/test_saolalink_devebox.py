@@ -33,6 +33,16 @@ class DeveboxGimbalTests(unittest.TestCase):
                     item.update(gpio='GPIOC', pin='LL_GPIO_PIN_1', channel='LL_ADC_CHANNEL_11')
                 elif item['name'] == 'RH':
                     item.update(gpio='GPIOC', pin='LL_GPIO_PIN_2', channel='LL_ADC_CHANNEL_12')
+            expected['adc_inputs']['inputs'].insert(5, {
+                'name': 'P2', 'type': 'FLEX', 'adc': 'MAIN', 'gpio': 'GPIOA',
+                'pin': 'LL_GPIO_PIN_6', 'channel': 'LL_ADC_CHANNEL_6',
+                'inverted': False, 'label': 'S2', 'short_label': '2', 'default': 'POT',
+            })
+            expected['switches'] = [sw for sw in expected['switches'] if sw['name'] != 'SE']
+            sc = next(sw for sw in expected['switches'] if sw['name'] == 'SC')
+            sc.update(type='2POS', default='2POS', gpio='GPIOD', pin='LL_GPIO_PIN_11')
+            for field in ('gpio_high', 'pin_high', 'gpio_low', 'pin_low'):
+                del sc[field]
             self.assertEqual(json.loads(derived.read_text()), expected)
             generator = RADIO / 'util/hw_defs/generate_hw_def.py'
             template = RADIO / 'util/hw_defs/stm32_adc_inputs.jinja'
@@ -46,8 +56,23 @@ class DeveboxGimbalTests(unittest.TestCase):
                                  rf'LL_GPIO_PIN_{pin},\s+LL_ADC_CHANNEL_{channel},')
             pins_a = re.search(r'_ADC_GPIOA_pins\[\] = \{(.*?)\};', rendered, re.S).group(1)
             pins_c = re.search(r'_ADC_GPIOC_pins\[\] = \{(.*?)\};', rendered, re.S).group(1)
-            self.assertEqual(set(re.findall(r'LL_GPIO_PIN_(\d+)', pins_a)), {'2', '3'})
+            self.assertEqual(set(re.findall(r'LL_GPIO_PIN_(\d+)', pins_a)), {'2', '3', '6'})
             self.assertEqual(set(re.findall(r'LL_GPIO_PIN_(\d+)', pins_c)), {'0', '1', '2'})
+            self.assertRegex(rendered, r'// P2\s+// ADC_INPUT_FLEX,\s+GPIOA,\s+LL_GPIO_PIN_6,\s+LL_ADC_CHANNEL_6,\s+0 // normal')
+            self.assertRegex(rendered, r'6, // VBAT\s+7, // RTC_BAT')
+            for template, needles in {
+                'hal_adc_inputs': ['{ 2, 4, _flex_inputs }', '{ 1, 6, _vbat_inputs }',
+                                   '{ 1, 7, _rtc_bat_inputs }', '{ 8, 0, nullptr }',
+                                   'FLEX_POT << (1 * POT_CFG_BITS)'],
+                'yaml_inputs': ['"POT2", MIXSRC_FIRST_POT + 1'],
+                'lua_inputs': ['MIXSRC_FIRST_POT + 1, "s2"'],
+            }.items():
+                output = subprocess.run(
+                    [sys.executable, str(generator), '-t', str(RADIO / f'util/hw_defs/{template}.jinja'),
+                     '-T', 'saolalinkv1', str(derived)], check=True, capture_output=True, text=True).stdout
+                for needle in needles:
+                    self.assertIn(needle, output)
+                self.assertNotIn('"SE"', output)
         self.assertEqual(BASE.read_bytes(), before)
 
     @unittest.skipUnless(shutil.which('g++'), 'requires g++')

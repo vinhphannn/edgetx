@@ -2281,6 +2281,138 @@ static int cliJoy(const char** argv)
   return 0;
 }
 
+static bool switchesWatch = true, switchesMonitorReady = false;
+static DeveboxButtonMonitor switchesMonitor;
+
+static void printSwitches(bool force)
+{
+  static const gpio_t pins[] = {
+    GPIO_PIN(GPIOC, 13), GPIO_PIN(GPIOA, 5), GPIO_PIN(GPIOE, 15),
+    GPIO_PIN(GPIOD, 11), GPIO_PIN(GPIOE, 8)
+  };
+  static const struct {
+    const char* name;
+    const char* pins;
+    unsigned shift, width;
+  } switches[] = {
+    {"SA", "PC13", 0, 1}, {"SB", "PA5/PE15", 1, 2},
+    {"SC", "PD11", 3, 1}, {"SD", "PE8", 4, 1}
+  };
+  uint32_t raw = 0;
+  for (unsigned i = 0; i < DIM(pins); ++i)
+    if (gpio_read(pins[i])) raw |= 1U << i;
+  uint32_t now = time_get_ms();
+  bool snapshot = force || !switchesMonitorReady;
+  uint32_t changed;
+  if (snapshot) {
+    switchesMonitor.reset(raw, now);
+    switchesMonitorReady = true;
+    changed = 0x1F;
+  } else {
+    changed = switchesMonitor.update(raw, now);
+  }
+  uint32_t state = switchesMonitor.value();
+  for (const auto& sw : switches) {
+    unsigned mask = (1U << sw.width) - 1;
+    if (!(changed & (mask << sw.shift))) continue;
+    unsigned levels = (state >> sw.shift) & mask;
+    if (sw.width == 2) {
+      // Match the STM32 switch driver for valid contact states. Both LOW is
+      // invalid wiring/contact overlap, rather than a normal 3-position state.
+      static const char* const positions[] = {"INVALID", "UP", "DOWN", "MID"};
+      cliSerialPrint("[SW %lu ms] %s %s(%s) POS=%s GPIO_H=%u GPIO_L=%u",
+                     (unsigned long)now, snapshot ? "STATE" : "CHANGE", sw.name,
+                     sw.pins, positions[levels], levels & 1U, (levels >> 1) & 1U);
+    } else {
+      cliSerialPrint("[SW %lu ms] %s %s(%s) POS=%s GPIO=%u",
+                     (unsigned long)now, snapshot ? "STATE" : "CHANGE", sw.name,
+                     sw.pins, levels ? "UP" : "DOWN", levels);
+    }
+  }
+}
+
+static void pollSwitchMonitor()
+{
+  if (!cliSendCb || !switchesWatch) {
+    switchesMonitorReady = false;
+    return;
+  }
+  printSwitches(false);
+}
+
+static int cliSwitches(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "off")) {
+    switchesWatch = false;
+    switchesMonitorReady = false;
+    cliSerialPrint("Switch monitor OFF (switch inputs remain enabled)");
+    return 0;
+  }
+  if (argv[1] && strcmp(argv[1], "on")) {
+    cliSerialPrint("Usage: switches [on|off] (logging only)");
+    return -1;
+  }
+  switchesWatch = true;
+  cliSerialPrint("Switch monitor ON: SA PC13, SB PA5/PE15, SC PD11 2POS, SD PE8; debounce 30ms; SE removed");
+  printSwitches(true);
+  return 0;
+}
+
+static bool potsWatch = true, potsMonitorReady = false;
+static DeveboxPotMonitor potsMonitor;
+
+static void printPots(bool force)
+{
+  static const char* const names[] = {"S1(PB0/ADC1_IN8)", "S2(PA6/ADC1_IN6)"};
+  uint16_t values[DeveboxPotMonitor::count];
+  for (unsigned i = 0; i < DeveboxPotMonitor::count; ++i)
+    values[i] = adcGetInputValue(ADC_INPUT_FLEX, i);
+  uint32_t now = time_get_ms();
+  bool snapshot = force || !potsMonitorReady;
+  uint32_t changed;
+  if (snapshot) {
+    potsMonitor.reset(values, now);
+    potsMonitorReady = true;
+    changed = (1U << DeveboxPotMonitor::count) - 1;
+  } else {
+    changed = potsMonitor.update(values, now);
+  }
+  for (unsigned i = 0; i < DeveboxPotMonitor::count; ++i) {
+    if (!(changed & (1U << i))) continue;
+    cliSerialPrint("[POT %lu ms] %s %s adc=%u delta=%+d",
+                   (unsigned long)now, snapshot ? "STATE" : "CHANGE", names[i],
+                   unsigned(values[i]), potsMonitor.delta(i, values[i]));
+    potsMonitor.reported(i, values[i]);
+  }
+}
+
+static void pollPotMonitor()
+{
+  if (!cliSendCb || !potsWatch) {
+    potsMonitorReady = false;
+    return;
+  }
+  printPots(false);
+}
+
+static int cliPots(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "off")) {
+    potsWatch = false;
+    potsMonitorReady = false;
+    cliSerialPrint("Pot monitor OFF (ADC/mixer remain enabled)");
+    return 0;
+  }
+  if (argv[1] && strcmp(argv[1], "on")) {
+    cliSerialPrint("Usage: pots [on|off] (logging only)");
+    return -1;
+  }
+  potsWatch = true;
+  cliSerialPrint("Pot monitor ON: S1 PB0 inverted, S2 PA6 normal; ADC 0..4095 before calibration; threshold 16, interval 50ms");
+  printPots(true);
+  return 0;
+}
+
 static bool powerWatch = true;
 static bool powerMonitorReady = false;
 static DeveboxButtonMonitor powerMonitor;
@@ -2495,6 +2627,8 @@ const CliCommand cliCommands[] = {
   { "buttons", cliButtons, "[on|off] Seven physical keys and encoder change logs" },
   { "encoder", cliEncoder, "Physical encoder A/B levels and decoded count" },
   { "joy", cliJoy, "[on|off] Four gimbal ADC values and automatic change logs" },
+  { "switches", cliSwitches, "[on|off] SA/SB/SC/SD positions and GPIO change logs" },
+  { "pots", cliPots, "[on|off] S1/S2 ADC values and automatic change logs" },
   { "power", cliPower, "[on|off] PD1 button / PD0 HOLD logs; does not switch power" },
   { "rf", cliRF, "[status|on|off|watch on|watch off] Internal CRSF diagnostics/control" },
 #endif
@@ -2640,6 +2774,8 @@ static void cliTask()
 #if defined(SAOLALINK_DEVEBOX)
     pollButtonMonitor(); // Print from the CLI task only, never a GPIO/timer ISR.
     pollGimbalMonitor();
+    pollSwitchMonitor();
+    pollPotMonitor();
     pollPowerMonitor();
     pollRFMonitor();
 #endif
