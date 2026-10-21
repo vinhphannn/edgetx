@@ -37,6 +37,7 @@ void pwrInit()
   // Latch battery power before LCD/SD initialization or scheduler startup.
   pwrOn();
   deveboxPowerButton.reset();
+  gpio_init(SAOLALINK_RF_BOOT_GPIO, GPIO_IN, GPIO_PIN_SPEED_LOW);
 #endif
 
 #if defined(SD_PRESENT_GPIO)

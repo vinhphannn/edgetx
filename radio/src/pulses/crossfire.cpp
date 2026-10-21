@@ -32,6 +32,12 @@
 #include "crossfire.h"
 #include "telemetry/crossfire.h"
 
+#if defined(SAOLALINK_DEVEBOX)
+#include "os/time.h"
+#include "targets/taranis/saolalink_v1/rf_monitor.h"
+DeveboxRFMonitor deveboxRF;
+#endif
+
 #define CROSSFIRE_CH_BITS           11
 #define CROSSFIRE_CENTER            0x3E0
 #if defined(PPM_CENTER_ADJUSTABLE)
@@ -238,6 +244,10 @@ static void crossfireSendPulses(void* ctx, uint8_t* buffer, int16_t* channels, u
   auto drv = modulePortGetSerialDrv(mod_st->tx);
   auto drv_ctx = modulePortGetCtx(mod_st->tx);
   drv->sendBuffer(drv_ctx, buffer, p_buf - buffer);
+#if defined(SAOLALINK_DEVEBOX)
+  // UART handoffs, not acknowledgements or measured RF transmissions.
+  if (module == INTERNAL_MODULE) ++deveboxRF.txQueued;
+#endif
 }
 
 static bool _lenIsSane(uint8_t len)
@@ -263,6 +273,10 @@ static uint8_t* _processFrames(void* ctx, uint8_t* buf, uint8_t& len)
     // the buffer by one instead of pkt_len or throwing it all out
     uint8_t declared_len = p_buf[1];
     if (!_validHdr(p_buf) || !_lenIsSane(declared_len)) {
+#if defined(SAOLALINK_DEVEBOX)
+      if (modulePortGetModule((etx_module_state_t*)ctx) == INTERNAL_MODULE)
+        ++deveboxRF.framingDrops;
+#endif
       p_buf++; len--;
       continue;
     }
@@ -274,6 +288,10 @@ static uint8_t* _processFrames(void* ctx, uint8_t* buf, uint8_t& len)
     }
 
     if (!_checkFrameCRC(p_buf)) {
+#if defined(SAOLALINK_DEVEBOX)
+      if (modulePortGetModule((etx_module_state_t*)ctx) == INTERNAL_MODULE)
+        ++deveboxRF.crcErrors;
+#endif
       TRACE("[XF] CRC error");
       p_buf++; len--;
       continue;
@@ -289,6 +307,9 @@ static uint8_t* _processFrames(void* ctx, uint8_t* buf, uint8_t& len)
     auto mod_st = (etx_module_state_t*)ctx;
     auto module = modulePortGetModule(mod_st);
     lastAlive[module] = get_tmr10ms();                              // valid frame received, note timestamp
+#if defined(SAOLALINK_DEVEBOX)
+    if (module == INTERNAL_MODULE) deveboxRF.validFrame(time_get_ms());
+#endif
     processCrossfireTelemetryFrame(module, p_buf, pkt_len);
 
     p_buf += pkt_len;
@@ -301,12 +322,20 @@ static uint8_t* _processFrames(void* ctx, uint8_t* buf, uint8_t& len)
 static void crossfireProcessFrame(void* ctx, uint8_t* frame, uint8_t frame_len,
                                   uint8_t* buf, uint8_t* p_len)
 {
+#if defined(SAOLALINK_DEVEBOX)
+  if (modulePortGetModule((etx_module_state_t*)ctx) == INTERNAL_MODULE)
+    deveboxRF.rxBytes += frame_len;
+#endif
   uint8_t& len = *p_len;
 
   if (len == 0) {
     if (frame_len == 0) return;
 
     if (!_validHdr(frame)) {
+#if defined(SAOLALINK_DEVEBOX)
+      if (modulePortGetModule((etx_module_state_t*)ctx) == INTERNAL_MODULE)
+        deveboxRF.framingDrops += frame_len;
+#endif
       TRACE("[XF] invalid frame start");
       return;
     }
@@ -394,7 +423,13 @@ static void* crossfireInit(uint8_t module)
 #if defined(INTERNAL_MODULE_CRSF)
   if (module == INTERNAL_MODULE) {
     params.baudrate = INT_CROSSFIRE_BAUDRATE;
+#if defined(SAOLALINK_DEVEBOX)
+    deveboxRF.beginSession(params.baudrate);
+#endif
     mod_st = modulePortInitSerial(module, ETX_MOD_PORT_UART, &params, false);
+#if defined(SAOLALINK_DEVEBOX)
+    deveboxRF.uartReady = mod_st != nullptr;
+#endif
 
     if (mod_st) {
       auto drv = modulePortGetSerialDrv(mod_st->rx);
@@ -453,6 +488,9 @@ static void* crossfireInit(uint8_t module)
 static void crossfireDeInit(void* ctx)
 {
   auto mod_st = (etx_module_state_t*)ctx;
+#if defined(SAOLALINK_DEVEBOX)
+  if (modulePortGetModule(mod_st) == INTERNAL_MODULE) deveboxRF.uartReady = false;
+#endif
 
   memset(&crossfireModuleStatus[modulePortGetModule(mod_st)], 0,
          sizeof(CrossfireModuleStatus));

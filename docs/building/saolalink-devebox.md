@@ -193,3 +193,72 @@ development fallback. A connected USB host can require ENTER confirmation;
 this is not a USB voltage/charger detector. USB 5 V can keep the MCU powered
 after HOLD goes LOW. Isolate USB and external buck 5 V before combining
 supplies on a board without reverse-current protection. RF remains disabled.
+
+## Internal CRSF enabled — 2026-10-20
+
+This supersedes the earlier RF-disabled checkpoints. Internal RF defaults to
+CRSF at 400000 baud, normal 8N1, PB6 TX to module RX, PB7 RX from module TX,
+and PC4 active-high power enable. External RF remains disabled. The DevEBox
+build keeps only internal CRSF rather than internal MULTI. Settings remain
+volatile; reboot returns to internal RF ON. Attach the correct antenna and
+supply the original Pocket ELRS module from the switched 5 V rail.
+
+BOOT circuitry has not been verified: PB1 is an input with no pull resistor,
+and the bootcmd callback is removed. This avoids clamping a directly connected
+ESP32 GPIO0 low. The module must retain its normal-run strap; HI_Z does not
+create a missing strap. The installed bootloader can briefly drive PB1 low
+before jumping, so hardware must keep RF off until application startup. The
+application releases PB1 before starting RF. No bootloader update is needed.
+
+USB CLI `rf` / `rf status` prints diagnostics; `rf on` / `rf off` changes
+the model via the normal mixer/module lifecycle, asynchronously. `rf watch
+on` / `rf watch off` only changes logging. Logs report changes and periodic
+2-second statistics while powered. PC4 is a command/pin state, not a measured
+module rail. UART READY means initialized; txq counts UART buffer handoffs,
+not acknowledgements or RF emission. RX bytes and CRC-valid frames are counted
+separately. CRSF_RX requires a valid frame within 2 seconds; otherwise WAIT_RX,
+BAD_RX or STALE explains what was seen. Device Info reports module name and
+ELRS version independently of receiver telemetry/binding. No printing occurs
+in protocol/ISR paths. Hardware communication still needs user verification.
+
+RF host regression checks: `python -m unittest discover -s radio/util/tests
+-p 'test_saolalink*.py' -v` covers parser fragmentation, CRC rejection,
+resynchronization, external isolation, UART handoff counts, session reset,
+timeouts and tick wrap, alongside the gimbal/power checks.
+
+## RF hardware checkpoint and next wiring — 2026-10-21
+
+The user reports the RF power circuit works after correcting miswired
+component pins. The earlier log (87 RX bytes, 7 CRC-valid frames, then STALE)
+was captured without module power; it does not verify module identification
+or sustained two-way communication. No new Device Info/binding log or rail
+measurements have been supplied for this checkpoint. PC4 HIGH enables the
+NPN/PMOS power switch; supply the module from switched 5 V, not raw 2S.
+
+The generated DevEBox switch table already initializes these inputs with
+internal pull-ups. They retain the Pocket mapping and do not overlap the
+currently wired menu keys, encoder, gimbals, SD, OLED or internal RF:
+
+| Input | MCU pin(s) | Wiring |
+| --- | --- | --- |
+| SA, 2-position | PC13 | Contact between pin and GND |
+| SB, 3-position | PA5 and PE15 | ON-OFF-ON common to GND, throws to the two pins |
+| SC, 3-position | PD11 and PE0 | ON-OFF-ON common to GND, throws to the two pins |
+| SD, 2-position | PE8 | Contact between pin and GND |
+| SE, momentary/toggle | PE7 | Contact between pin and GND |
+| S1 potentiometer | PB0, ADC1_IN8 | Track ends to 3V3_MCU/GND, wiper to PB0 |
+
+For switches, an external 10 kOhm pull-up per signal to 3V3_MCU is suitable
+for the prototype wiring. With a 220 Ohm series resistor, put the pull-up
+on the MCU side. A 3-position switch has both inputs HIGH at center and
+one LOW at either end. Use an actual center-off switch; determine common
+by continuity, not by assuming the middle physical pin. On a 2-position
+SPDT switch use common and one throw, leaving the other throw unconnected.
+Do not connect a throw directly to 3V3.
+
+S1 is analog: no pull-up or pull-down. A linear 10 kOhm potentiometer is
+appropriate; an optional 100 nF capacitor goes from PB0 to GND near the
+MCU. Reversing the two track ends reverses direction. The inherited P1
+mapping also inverts its ADC reading. Only one potentiometer is currently
+defined. CLI automatic logs cover buttons/encoder, four gimbals, power and
+RF; switch/S1 change logging has not been added in this checkpoint.

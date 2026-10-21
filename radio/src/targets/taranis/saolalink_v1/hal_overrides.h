@@ -7,6 +7,10 @@
 #undef PWR_SWITCH_GPIO
 #define PWR_SWITCH_GPIO GPIO_PIN(GPIOD, 1)
 
+// BOOT circuitry is not verified. Do not clamp ESP32 GPIO0 LOW or back-power it.
+#define SAOLALINK_RF_BOOT_GPIO GPIO_PIN(GPIOB, 1)
+#undef INTMODULE_BOOTCMD_GPIO
+
 // Six-pin external SPI socket has no card-detect contact.
 #undef SD_PRESENT_GPIO
 

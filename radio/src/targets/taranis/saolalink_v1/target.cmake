@@ -32,7 +32,10 @@
       set(HAPTIC NO)
       # JSON declares encoder navigation; retain its driver even on the bare board.
       set(ROTARY_ENCODER YES)
-      set(HARDWARE_INTERNAL_MODULE NO)
+      set(INTERNAL_MODULES CRSF CACHE STRING "DevEBox internal module protocols" FORCE)
+      set(INTERNAL_MODULE_CRSF ON CACHE BOOL "Support internal CRSF" FORCE)
+      set(INTERNAL_MODULE_MULTI OFF CACHE BOOL "No internal MULTI on DevEBox" FORCE)
+      set(HARDWARE_INTERNAL_MODULE YES)
       set(HARDWARE_EXTERNAL_MODULE NO)
       list(APPEND BOOTLOADER_SRC ${RADIO_SRC_DIR}/targets/taranis/saolalink_v1/devebox_dfu.cpp)
     endif()

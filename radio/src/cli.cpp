@@ -49,6 +49,7 @@
 #include "targets/taranis/saolalink_v1/devebox_keys.h"
 #include "targets/taranis/saolalink_v1/button_monitor.h"
 #include "targets/taranis/saolalink_v1/gimbal_monitor.h"
+#include "targets/taranis/saolalink_v1/rf_monitor.h"
 #include "hal/rotary_encoder.h"
 #endif
 
@@ -2335,6 +2336,99 @@ static int cliPower(const char** argv)
   return 0;
 }
 
+static bool rfWatch = true, rfMonitorReady = false;
+static uint32_t rfPollAt = 0, rfPrintAt = 0;
+static uint8_t rfLastControl = 0;
+static DeveboxRFMonitor::Link rfLastLink = DeveboxRFMonitor::OFF;
+static bool rfLastIdentified = false, rfLastTelemetry = false;
+
+static void printRF(bool force)
+{
+  uint32_t now = time_get_ms();
+  if (!force && rfMonitorReady && uint32_t(now - rfPollAt) < 100) return;
+  rfPollAt = now;
+  bool powered = gpio_read(INTMODULE_PWR_GPIO);
+  bool modelOn = g_model.moduleData[INTERNAL_MODULE].type == MODULE_TYPE_CROSSFIRE;
+  auto link = deveboxRF.link(powered, now);
+  bool identified = powered && deveboxRF.uartReady &&
+                    crossfireModuleStatus[INTERNAL_MODULE].queryCompleted;
+  bool telemetry = TELEMETRY_STREAMING();
+  uint8_t control = unsigned(powered) | (unsigned(modelOn) << 1) |
+                    (unsigned(deveboxRF.uartReady) << 2);
+  bool snapshot = force || !rfMonitorReady;
+  bool changed = snapshot || control != rfLastControl || link != rfLastLink ||
+                 identified != rfLastIdentified || telemetry != rfLastTelemetry;
+  bool periodic = powered && uint32_t(now - rfPrintAt) >= 2000;
+  if (changed || periodic) {
+    static const char* const states[] = {"OFF", "UART_DOWN", "WAIT_RX", "BAD_RX", "CRSF_RX", "STALE"};
+    const char* event = snapshot ? "STATE" : changed ? "CHANGE" : "STATS";
+    cliSerialPrint("[RF %lu ms] %s model=%s PC4=%u UART=%s baud=%lu BOOT(PB1)=HI_Z",
+                   (unsigned long)now, event, modelOn ? "CRSF" : "OFF", unsigned(powered),
+                   deveboxRF.uartReady ? "READY" : "DOWN", (unsigned long)deveboxRF.baud);
+    cliSerialPrint("[RF] %s txq=%lu rx=%lu good=%lu crc_bad=%lu drop=%lu age_ms=%ld",
+                   states[link], (unsigned long)deveboxRF.txQueued,
+                   (unsigned long)deveboxRF.rxBytes, (unsigned long)deveboxRF.goodFrames,
+                   (unsigned long)deveboxRF.crcErrors, (unsigned long)deveboxRF.framingDrops,
+                   deveboxRF.seenThisSession ? (long)uint32_t(now - deveboxRF.lastGoodMs) : -1L);
+    if (snapshot || identified != rfLastIdentified) {
+      if (identified) {
+        const auto& info = crossfireModuleStatus[INTERNAL_MODULE];
+        char name[CRSF_NAME_MAXSIZE];
+        unsigned i = 0;
+        for (; i < sizeof(name) - 1 && info.name[i]; ++i)
+          name[i] = info.name[i] >= 32 && info.name[i] <= 126 ? info.name[i] : '?';
+        name[i] = '\0';
+        cliSerialPrint("[RF] DEVICE name=%s ELRS=%u fw=%u.%u.%u", name,
+                       unsigned(info.isELRS), unsigned(info.major), unsigned(info.minor), unsigned(info.revision));
+      } else {
+        cliSerialPrint("[RF] DEVICE not identified; PC4 is a command level, not measured module voltage");
+      }
+    }
+    if (snapshot || telemetry != rfLastTelemetry)
+      cliSerialPrint("[RF] receiver_telemetry=%s (separate from local UART/module detection)", telemetry ? "ACTIVE" : "INACTIVE");
+    rfPrintAt = now;
+  }
+  rfLastControl = control;
+  rfLastLink = link;
+  rfLastIdentified = identified;
+  rfLastTelemetry = telemetry;
+  rfMonitorReady = true;
+}
+
+static void pollRFMonitor()
+{
+  if (!cliSendCb || !rfWatch) {
+    rfMonitorReady = false;
+    return;
+  }
+  printRF(false);
+}
+
+static int cliRF(const char** argv)
+{
+  if (argv[1] && !strcmp(argv[1], "watch") && argv[2] &&
+      (!strcmp(argv[2], "on") || !strcmp(argv[2], "off"))) {
+    rfWatch = !strcmp(argv[2], "on");
+    rfMonitorReady = false;
+    cliSerialPrint("RF logging %s (does not change module power)", rfWatch ? "ON" : "OFF");
+    if (rfWatch) printRF(true);
+    return 0;
+  }
+  if (argv[1] && (!strcmp(argv[1], "on") || !strcmp(argv[1], "off"))) {
+    bool enable = !strcmp(argv[1], "on");
+    bool running = mixerTaskRunning();
+    mixerTaskStop();
+    setModuleType(INTERNAL_MODULE, enable ? MODULE_TYPE_CROSSFIRE : MODULE_TYPE_NONE);
+    if (running) mixerTaskStart();
+    cliSerialPrint("RF %s requested; EdgeTX mixer manages UART and PC4 asynchronously", enable ? "ON" : "OFF");
+  } else if (argv[1] && strcmp(argv[1], "status")) {
+    cliSerialPrint("Usage: rf [status|on|off|watch on|watch off]");
+    return -1;
+  }
+  printRF(true);
+  return 0;
+}
+
 static void printButtons(uint32_t state, uint32_t mask, bool snapshot)
 {
   for (unsigned i = 0; i < deveboxKeyCount; ++i) {
@@ -2389,7 +2483,8 @@ static int cliButtons(const char** argv)
 
 static int cliDevBoard(const char **)
 {
-  cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000 | USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | volatile settings, no RF", (unsigned long)SystemCoreClock, sdMounted() ? "mounted" : "not mounted");
+  cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000", (unsigned long)SystemCoreClock);
+  cliSerialPrint("USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | volatile settings | internal CRSF, external OFF", sdMounted() ? "mounted" : "not mounted");
   return 0;
 }
 #endif
@@ -2401,6 +2496,7 @@ const CliCommand cliCommands[] = {
   { "encoder", cliEncoder, "Physical encoder A/B levels and decoded count" },
   { "joy", cliJoy, "[on|off] Four gimbal ADC values and automatic change logs" },
   { "power", cliPower, "[on|off] PD1 button / PD0 HOLD logs; does not switch power" },
+  { "rf", cliRF, "[status|on|off|watch on|watch off] Internal CRSF diagnostics/control" },
 #endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },
@@ -2545,6 +2641,7 @@ static void cliTask()
     pollButtonMonitor(); // Print from the CLI task only, never a GPIO/timer ISR.
     pollGimbalMonitor();
     pollPowerMonitor();
+    pollRFMonitor();
 #endif
 
     if (!mixerTaskRunning()) {

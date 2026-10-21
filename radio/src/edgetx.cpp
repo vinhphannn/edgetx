@@ -1686,7 +1686,9 @@ void edgeTxInit()
   g_eeGeneral.USBMode = USB_SERIAL_MODE;
   serialSetMode(SP_VCP, UART_MODE_CLI);
   g_eeGeneral.pwrOffSpeed = 0; // EdgeTX YAML delay 0 means hold for 2 seconds.
-  g_model.moduleData[INTERNAL_MODULE].type = MODULE_TYPE_NONE;
+  g_eeGeneral.internalModule = MODULE_TYPE_CROSSFIRE;
+  g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(1); // 400 kbaud
+  setModuleType(INTERNAL_MODULE, MODULE_TYPE_CROSSFIRE);
   g_model.moduleData[EXTERNAL_MODULE].type = MODULE_TYPE_NONE;
 #else
 #if defined(RTC_BACKUP_RAM) && !defined(SIMU)

@@ -108,6 +108,8 @@ class DeveboxPowerTests(unittest.TestCase):
 #define PWR_BUTTON_PRESS
 #define GPIO_PIN(port,pin) ((port)|(pin))
 #define GPIOD 0x40020C00U
+#define GPIOB 0x40020400U
+#define GPIO_IN 0
 #define GPIO_IN_PU 1
 #define GPIO_OUT 2
 #define GPIO_PIN_SPEED_LOW 0
@@ -130,8 +132,8 @@ static int confirmations;
 static std::vector<unsigned> initialized;
 uint32_t time_get_ms() {return ms;}
 void gpio_init(unsigned pin, int mode, int) {
-  assert(pin==PWR_ON_GPIO || pin==PWR_SWITCH_GPIO);
-  assert(mode==(pin==PWR_ON_GPIO ? GPIO_OUT : GPIO_IN_PU));
+  assert(pin==PWR_ON_GPIO || pin==PWR_SWITCH_GPIO || pin==SAOLALINK_RF_BOOT_GPIO);
+  assert(mode==(pin==PWR_ON_GPIO ? GPIO_OUT : pin==PWR_SWITCH_GPIO ? GPIO_IN_PU : GPIO_IN));
   initialized.push_back(pin);
 }
 void gpio_set(unsigned pin) {assert(pin==PWR_ON_GPIO); hold=true;}
@@ -189,8 +191,8 @@ int main(int argc, char**) {
   usbConfigured = argc>1;
   rawPressed=true;
   pwrInit();
-  assert(hold && initialized.size()==2);
-  assert(initialized[0]==PWR_ON_GPIO && initialized[1]==PWR_SWITCH_GPIO);
+  assert(hold && initialized.size()==3);
+  assert(initialized[0]==PWR_ON_GPIO && initialized[1]==SAOLALINK_RF_BOOT_GPIO && initialized[2]==PWR_SWITCH_GPIO);
   for(ms=0;ms<10000;ms+=20) assert(pwrCheck()==e_power_on); // boot press ignored
   rawPressed=false;
   for(unsigned i=0;i<10;++i,ms+=20) assert(pwrCheck()==e_power_on);
