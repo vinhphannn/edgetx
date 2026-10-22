@@ -2616,7 +2616,7 @@ static int cliButtons(const char** argv)
 static int cliDevBoard(const char **)
 {
   cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000", (unsigned long)SystemCoreClock);
-  cliSerialPrint("USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | volatile settings | internal CRSF, external OFF", sdMounted() ? "mounted" : "not mounted");
+  cliSerialPrint("USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | settings on SD", sdMounted() ? "mounted" : "not mounted");
   return 0;
 }
 #endif

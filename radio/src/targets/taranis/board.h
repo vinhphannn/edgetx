@@ -331,7 +331,13 @@ void setTopBatteryValue(uint32_t volts);
 
 #define INTMODULE_FIFO_SIZE            128
 
-#if defined(RADIO_TLITE)
+#if defined(SAOLALINK_DEVEBOX)
+  // Switched 2S supply (after the main FET, before the buck):
+  // SYS_BAT -- 20k -- PC0/ADC1_IN10 -- 10k -- GND; 100nF PC0 to GND.
+  #define VBAT_DIV_R1         20 // kOhms
+  #define VBAT_DIV_R2         10 // kOhms
+  #define VBAT_MOSFET_DROP    0  // No fixed Pocket voltage-drop compensation
+#elif defined(RADIO_TLITE)
   #define BATTERY_DIVIDER 27500    // TODO: fix when we have proper schematics
   #define VOLTAGE_DROP 20
 #elif (defined(MANUFACTURER_RADIOMASTER) || defined(RADIO_SAOLALINKV1)) || defined(MANUFACTURER_JUMPER)

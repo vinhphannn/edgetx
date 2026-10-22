@@ -29,9 +29,6 @@
 #endif
 
 #include "edgetx.h"
-#if defined(SAOLALINK_DEVEBOX)
-#include "model_init.h"
-#endif
 #include "io/frsky_firmware_update.h"
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
@@ -456,6 +453,15 @@ void generalDefault()
   for (int i = 0; i < 5; i++) {
     calib->steps[i] = defaultCalib[i];
   }
+#endif
+
+#if defined(SAOLALINK_DEVEBOX)
+  // New-radio defaults only. Never overwrite SD-loaded calibration or mode.
+  g_eeGeneral.USBMode = USB_SERIAL_MODE;
+  serialSetMode(SP_VCP, UART_MODE_CLI);
+  g_eeGeneral.pwrOffSpeed = 0; // YAML delay 0 means hold for 2 seconds.
+  g_eeGeneral.internalModule = MODULE_TYPE_CROSSFIRE;
+  g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(1); // 400 kbaud
 #endif
 
   g_eeGeneral.chkSum = 0xFFFF;
@@ -1272,8 +1278,6 @@ void edgeTxClose(uint8_t shutdown)
 
   logsClose();
 
-#if !defined(SAOLALINK_DEVEBOX)
-  // DevEBox still uses volatile defaults; do not persist them over SD settings.
   storageFlushCurrentModel();
 
   if (sessionTimer > 0) {
@@ -1283,7 +1287,6 @@ void edgeTxClose(uint8_t shutdown)
   }
 
   storageCheck(true);
-#endif
 
   uint32_t bye_start = time_get_ms();
   while (IS_PLAYING(ID_PLAY_PROMPT_BASE + AU_BYE)) {
@@ -1564,7 +1567,8 @@ void edgeTxInit()
 {
   TRACE("edgeTxInit");
 #if defined(SAOLALINK_DEVEBOX)
-  startOptions |= OPENTX_START_NO_SPLASH | OPENTX_START_NO_CALIBRATION | OPENTX_START_NO_CHECKS;
+  // Keep the development startup quiet, but calibrate a new radio normally.
+  startOptions |= OPENTX_START_NO_SPLASH | OPENTX_START_NO_CHECKS;
 #endif
 
 #if defined(COLORLCD)
@@ -1592,9 +1596,6 @@ void edgeTxInit()
 #endif
 
   // Load radio.yml so radio settings can be used
-#if defined(SAOLALINK_DEVEBOX)
-  generalDefault(); // Bare board: volatile defaults, no storage warning dialog.
-#else
 #if defined(RTC_BACKUP_RAM)
   // Skip loading if EM startup and radio has RTC backup data
   if (!UNEXPECTED_SHUTDOWN())
@@ -1603,7 +1604,6 @@ void edgeTxInit()
   // No RTC backup - try and load even for EM startup
   storageReadRadioSettings(false);
 #endif
-#endif // SAOLALINK_DEVEBOX
 
 #if defined(GUI) && !defined(COLORLCD)
 #if LCD_W == 128
@@ -1632,16 +1632,7 @@ void edgeTxInit()
 #endif
 
   // SDCARD related stuff, only enable if normal boot
-#if defined(SAOLALINK_DEVEBOX)
-  // Probe the external SPI socket without blocking USB on missing/bad media.
-  // Keep model settings volatile until the remaining hardware is integrated.
-  sdInit();
-#endif
-  if (!UNEXPECTED_SHUTDOWN()
-#if defined(SAOLALINK_DEVEBOX)
-      && false
-#endif
-  ) {
+  if (!UNEXPECTED_SHUTDOWN()) {
 
     if (!sdMounted())
       sdInit();
@@ -1680,17 +1671,6 @@ void edgeTxInit()
 #endif
 
   // handling of storage for radios
-#if defined(SAOLALINK_DEVEBOX)
-  generalDefault();
-  setModelDefaults();
-  g_eeGeneral.USBMode = USB_SERIAL_MODE;
-  serialSetMode(SP_VCP, UART_MODE_CLI);
-  g_eeGeneral.pwrOffSpeed = 0; // EdgeTX YAML delay 0 means hold for 2 seconds.
-  g_eeGeneral.internalModule = MODULE_TYPE_CROSSFIRE;
-  g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(1); // 400 kbaud
-  setModuleType(INTERNAL_MODULE, MODULE_TYPE_CROSSFIRE);
-  g_model.moduleData[EXTERNAL_MODULE].type = MODULE_TYPE_NONE;
-#else
 #if defined(RTC_BACKUP_RAM) && !defined(SIMU)
   if (UNEXPECTED_SHUTDOWN()) {
     // SDCARD not available, try to restore last model from RAM
@@ -1704,7 +1684,6 @@ void edgeTxInit()
 #else
   storageReadAll();
 #endif
-#endif // SAOLALINK_DEVEBOX
 
   initSerialPorts();
 

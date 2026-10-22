@@ -362,6 +362,17 @@ void checkStorageUpdate()
   }
 }
 
+static bool storageUpdateAllowed()
+{
+#if defined(SAOLALINK_DEVEBOX)
+  // No VBUS sense: usbPlugged() is always true on this board. CDC/HID may
+  // coexist with settings writes; only USB mass storage owns the SD card.
+  return getSelectedUsbMode() != USB_MASS_STORAGE_MODE;
+#else
+  return !usbPlugged() || getSelectedUsbMode() == USB_UNSELECTED_MODE;
+#endif
+}
+
 #define BAT_AVG_SAMPLES 8
 
 void checkBatteryAlarms()
@@ -574,7 +585,7 @@ void perMain()
 
   checkSpeakerVolume();
 
-  if (!usbPlugged() || (getSelectedUsbMode() == USB_UNSELECTED_MODE)) {
+  if (storageUpdateAllowed()) {
     checkStorageUpdate();
     initLoggingTimer();  // initialize software timer for logging
   }
@@ -617,7 +628,7 @@ void perMain()
   }
 #endif
 
-  if (!usbPlugged() || (getSelectedUsbMode() == USB_UNSELECTED_MODE)) {
+  if (storageUpdateAllowed()) {
     if (SD_CARD_PRESENT() && !sdMounted())
       sdMount();
 

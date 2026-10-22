@@ -95,6 +95,11 @@ void setDefaultRSSIValues()
 
 void setVendorSpecificModelDefaults(uint8_t id)
 {
+#if defined(SAOLALINK_DEVEBOX)
+  // Apply only when creating a model, not whenever a saved model is loaded.
+  setModuleType(INTERNAL_MODULE, MODULE_TYPE_CROSSFIRE);
+  g_model.moduleData[EXTERNAL_MODULE].type = MODULE_TYPE_NONE;
+#endif
 #if defined(RADIOMASTER_RTF_RELEASE)
   // Those settings are for headless radio
   g_model.trainerData.mode = TRAINER_MODE_SLAVE;

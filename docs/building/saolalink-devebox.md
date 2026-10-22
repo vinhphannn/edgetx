@@ -356,3 +356,62 @@ load/save lifecycle, apply development defaults only when creating new
 settings, and verify calibration/stick mode/model selection across shutdown
 and restart. Persistence behavior is unchanged in this checkpoint; this
 entry records the diagnosis rather than claiming a fix or hardware test.
+
+## SD settings persistence restored — 2026-10-21
+
+This supersedes the volatile bring-up behavior above. Startup now follows
+the normal EdgeTX SD lifecycle: load `/RADIO/radio.yml`, validate/recover
+settings and load the selected model from `/MODELS`. Normal shutdown flushes
+model/timer changes and forces pending settings writes before unmounting SD
+and releasing the power latch. Calibration is requested normally for a new
+radio; loading existing settings no longer resets calibration or stick mode.
+
+USB Serial/CLI, 2-second power-off hold and internal CRSF 400 kbaud are now
+defaults only when creating new radio data. Internal CRSF ON/external OFF
+are defaults only when creating a model. Loaded radio/model choices,
+including RF OFF and selected model, are preserved rather than overwritten.
+An absent/unusable SD card now follows the standard SD error screen instead
+of silently starting with volatile defaults. Existing valid files are loaded;
+the firmware does not unconditionally recreate the radio or model on boot.
+
+The DevEBox VBUS fallback always reports USB present. The old main loop
+therefore also suppressed periodic storage updates after selecting CDC,
+even when no host was physically connected. DevEBox now permits periodic
+writes while USB Serial/HID is selected and blocks them during USB Mass
+Storage, when the computer owns the card. Other targets keep their original
+USB/storage gating. Default write delay remains 5 seconds after a settings
+change, with a forced write during normal power-button shutdown.
+
+Host regression executes actual startup/shutdown, storage orchestration,
+calibration dirty marking and USB gating against a file-backed mock backend.
+It covers first use, calibration/stick-mode cold reload, selected model and
+RF/USB preferences, immediate shutdown flush, write-failure retry and missing
+SD. This exercises the read/write boundary, not a hardware SD card or a new
+YAML codec. All 12 firmware/control/storage and 22 Studio tests pass; the
+application build fits at 473120 bytes. No bootloader change is needed.
+
+After application upload, complete calibration and choose stick mode, exit
+the setup screen, then shut down normally with the power button and restart.
+Verify the values and selected model survive on the physical board.
+
+## Battery divider 20 kΩ / 10 kΩ — 2026-10-21
+
+DevEBox battery sensing uses PC0 / ADC1_IN10. Connect 20 kΩ from the
+switched 2S supply after the main power FET and before the buck to PC0,
+10 kΩ from PC0 to ground, and 100 nF from PC0 to ground near the MCU.
+At 8.4 V the ADC input is 2.8 V. Prefer 1% resistors.
+
+Only SAOLALINK_DEVEBOX now uses VBAT_DIV_R1=20, VBAT_DIV_R2=10 and
+VBAT_MOSFET_DROP=0 instead of the inherited Pocket 499/160 ratio and
+0.25 V fixed offset. Other targets retain their existing conversion.
+Saved battery calibration remains respected; if previously adjusted for
+the old divider, set it to zero before comparing against a multimeter.
+Upload the application only; no bootloader update is required.
+
+Host checks compile and execute the actual battery conversion driver with
+the board divider definitions: 6.0/7.4/8.4 V convert within 0.02 V, zero
+input has no fixed offset, and saved voltage calibration still applies.
+The inherited SaolaLink, RadioMaster, Jumper and T-Lite definitions also
+pass their existing ratio/offset checks. Debug build succeeds; application
+size is 473120 bytes. Physical voltage accuracy still needs comparison
+against a multimeter after upload.
