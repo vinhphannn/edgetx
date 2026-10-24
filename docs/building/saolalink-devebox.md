@@ -415,3 +415,22 @@ The inherited SaolaLink, RadioMaster, Jumper and T-Lite definitions also
 pass their existing ratio/offset checks. Debug build succeeds; application
 size is 473120 bytes. Physical voltage accuracy still needs comparison
 against a multimeter after upload.
+
+## Flight-tested DevEBox checkpoint — 2026-10-24
+
+The user reports that the DevEBox transmitter has flown stably with the
+current firmware and the pin adaptations for the wired development board.
+Record this as the working checkpoint before further development.
+
+This checkpoint retains the firmware from `9d0a61c397`: the 8 MHz DevEBox
+configuration, remapped controls and peripherals, internal CRSF integration,
+RTN USB bootloader entry, SD-backed settings persistence, and the 20 kΩ /
+10 kΩ battery-divider configuration described above. The flight result is
+user-reported hardware validation; this entry adds no firmware changes.
+
+For subsequent work, compare against this checkpoint on branch
+`SAOLALINKV1`. Keep the DevEBox build selected with `PCB=X7`,
+`PCBREV=SAOLALINK_V1`, `SAOLALINK_HSE_HZ=8000000`, and
+`SAOLALINK_DEVEBOX=ON`. A future custom PCB will need its own reviewed
+hardware configuration; this checkpoint records the experimental DevEBox
+board rather than a finalized production PCB.
