@@ -45,6 +45,12 @@ class TelemetryItem
 
     int8_t timeout; // for detection of sensor loss
 
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+    // HOME freshness only: legacy timeout cadence depends on link traffic.
+    // Runtime metadata, never serialized into model/radio settings.
+    tmr10ms_t tyvorReceivedAt = 0;
+#endif
+
     union {
       struct {
         int32_t  offsetAuto;
@@ -121,6 +127,9 @@ class TelemetryItem
     inline void setFresh()
     {
       timeout = TELEMETRY_SENSOR_TIMEOUT_START;
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+      tyvorReceivedAt = get_tmr10ms();
+#endif
     }
 
     inline void setOld()

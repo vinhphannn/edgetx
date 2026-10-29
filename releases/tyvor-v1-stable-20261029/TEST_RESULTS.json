@@ -1,0 +1,29 @@
+{
+  "regression_current_backup": {
+    "tyvor": 41,
+    "saolalink": 12,
+    "total": 53,
+    "result": "PASS",
+    "skipped": 0
+  },
+  "binary_integrity": "PASS",
+  "bootloader_32k_unchanged": "PASS",
+  "elf_feature_symbols_and_model_keys": "PASS",
+  "source_changes_this_backup": 0,
+  "git_diff_check": "PASS",
+  "git_index_empty_before_backup": true,
+  "previous_validation_same_firmware": {
+    "studio_gui_arm_gnu_14_2_1_devebox_8mhz": "PASS",
+    "wslg_128x64_and_navigation": "PASS"
+  },
+  "new_arm_build": false,
+  "reason_no_rebuild": "Backup must preserve exact hardware-tested bytes; production source unchanged. Prior Studio ARM/ELF checks retained.",
+  "hardware": {
+    "overall_firmware": "CONFIRMED BY USER: loaded and working on TYVOR hardware",
+    "agent_hardware_test": "NOT VERIFIED; no device access and no flash performed",
+    "flight_timer_switch": "Previously confirmed working by user",
+    "auto_timer_and_physical_armed_transition": "NOT VERIFIED individually on hardware",
+    "sats_actual_values_and_altitude_source": "NOT VERIFIED individually on hardware; ambiguous GAlt leaves ALT --"
+  },
+  "safety": "Presentation/timer/navigation preserved; no RF/mixer/failsafe/bootloader edits in backup"
+}

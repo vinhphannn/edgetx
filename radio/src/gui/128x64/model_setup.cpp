@@ -20,6 +20,9 @@
  */
 
 #include "edgetx.h"
+#include "tyvor_menu.h"
+#include "tyvor_flight_timer.h"
+#include "tyvor_fc_arm.h"
 #include "mixer_scheduler.h"
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
@@ -259,6 +262,12 @@ enum MenuModelSetupItems {
   ITEM_MODEL_SETUP_USBJOYSTICK_APPLY,
 #endif
 
+#if defined(TYVOR_FLIGHT_TIMER_UI)
+  ITEM_TYVOR_FLIGHT_TIMER,
+#endif
+#if defined(TYVOR_FC_ARM_UI)
+  ITEM_TYVOR_FC_ARM,
+#endif
   ITEM_MODEL_SETUP_LINES_COUNT
 };
 
@@ -432,7 +441,14 @@ void onModelAntennaSwitchConfirm(const char * result)
 #define EXTERNAL_ANTENNA_ROW
 #endif
 
-#if defined(PCBX7ACCESS)
+#if defined(TYVOR_HIDE_TRAINER)
+  // Keep enum/serialized fields and all trainer/PPM code. Only skip these rows.
+  #if defined(BLUETOOTH)
+    #define TRAINER_ROWS HIDDEN_ROW, HIDDEN_ROW, HIDDEN_ROW, HIDDEN_ROW, HIDDEN_ROW
+  #else
+    #define TRAINER_ROWS HIDDEN_ROW, HIDDEN_ROW, HIDDEN_ROW, HIDDEN_ROW
+  #endif
+#elif defined(PCBX7ACCESS)
   #define TRAINER_BLUETOOTH_ROW          (g_model.trainerData.mode == TRAINER_MODE_MASTER_BLUETOOTH ? TRAINER_BLUETOOTH_M_ROW : (g_model.trainerData.mode == TRAINER_MODE_SLAVE_BLUETOOTH ? TRAINER_BLUETOOTH_S_ROW : HIDDEN_ROW))
   #define TRAINER_PPM_PARAMS_ROW         (g_model.trainerData.mode == TRAINER_MODE_SLAVE ? (uint8_t)2 : HIDDEN_ROW)
   #define TRAINER_ROWS                   LABEL(Trainer), 0, IF_BT_TRAINER_ON(TRAINER_BLUETOOTH_ROW), TRAINER_CHANNELS_ROW, TRAINER_PPM_PARAMS_ROW
@@ -858,7 +874,7 @@ void menuModelSetup(event_t event)
     0,
      VIEWOPT_ROW(LABEL(RadioMenuTabs)),
       VIEWOPT_ROW(0),
-      VIEWOPT_ROW(0),
+      VIEWOPT_ROW(tyvorTrainerRow(0)),
      VIEWOPT_ROW(LABEL(ModelMenuTabs)),
       CASE_HELI(VIEWOPT_ROW(0))
       CASE_FLIGHT_MODES(VIEWOPT_ROW(0))
@@ -869,6 +885,15 @@ void menuModelSetup(event_t event)
       VIEWOPT_ROW(0),
 
     USB_JOYSTICK_ROWS
+#if defined(TYVOR_FLIGHT_TIMER_UI)
+#if defined(USBJ_EX)
+    ,
+#endif
+    0,
+#endif
+#if defined(TYVOR_FC_ARM_UI)
+    0,
+#endif
   });
 
 #if defined(FUNCTION_SWITCHES)
@@ -924,6 +949,18 @@ void menuModelSetup(event_t event)
     LcdFlags attr = (sub == k ? blink : 0);
 
     switch (k) {
+#if defined(TYVOR_FC_ARM_UI)
+      case ITEM_TYVOR_FC_ARM:
+        lcdDrawText(INDENT_WIDTH,y,"FC ARM telemetry",attr);
+        if (attr && event==EVT_KEY_BREAK(KEY_ENTER)) {s_editMode=0;pushMenu(menuTyvorFcArm);}
+        break;
+#endif
+#if defined(TYVOR_FLIGHT_TIMER_UI)
+      case ITEM_TYVOR_FLIGHT_TIMER:
+        lcdDrawText(INDENT_WIDTH,y,"Flight timer",attr);
+        if (attr && event==EVT_KEY_BREAK(KEY_ENTER)) {s_editMode=0;pushMenu(menuTyvorFlightTimer);}
+        break;
+#endif
       case ITEM_MODEL_SETUP_NAME:
         editSingleName(MODEL_SETUP_2ND_COLUMN, y, STR_MODELNAME,
                        g_model.header.name, sizeof(g_model.header.name), event,

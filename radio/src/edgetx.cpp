@@ -29,6 +29,7 @@
 #endif
 
 #include "edgetx.h"
+#include "gui/128x64/tyvor_power.h"
 #include "io/frsky_firmware_update.h"
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
@@ -1297,7 +1298,21 @@ void edgeTxClose(uint8_t shutdown)
     sleep_ms(10);
   }
 
+#if defined(TYVOR_POWER_UI)
+  // Reuse the existing 100 ms close interval. Never add a cosmetic power hold,
+  // and never draw over the USB mass-storage transition (shutdown == false).
+  uint32_t tyvorCloseStart = time_get_ms();
+  while (time_get_ms() - tyvorCloseStart < 100) {
+    uint32_t elapsed = time_get_ms() - tyvorCloseStart;
+    if (shutdown)
+      drawShutdownAnimation(elapsed, 100, nullptr);
+    elapsed = time_get_ms() - tyvorCloseStart;
+    if (elapsed < 100)
+      sleep_ms(min<uint32_t>(10, 100 - elapsed));
+  }
+#else
   sleep_ms(100);
+#endif
 
 #if defined(COLORLCD)
   cancelShutdownAnimation();  // To prevent simulator crash
@@ -1567,8 +1582,8 @@ void edgeTxInit()
 {
   TRACE("edgeTxInit");
 #if defined(SAOLALINK_DEVEBOX)
-  // Keep the development startup quiet, but calibrate a new radio normally.
-  startOptions |= OPENTX_START_NO_SPLASH | OPENTX_START_NO_CHECKS;
+  // Show the branded splash; preserve the existing development checks policy.
+  startOptions |= OPENTX_START_NO_CHECKS;
 #endif
 
 #if defined(COLORLCD)
@@ -1614,6 +1629,16 @@ void edgeTxInit()
 
   currentBacklightBright = requiredBacklightBright = g_eeGeneral.getBrightness();
   BACKLIGHT_ENABLE(); // we start the backlight during the startup animation
+
+#if defined(TYVOR_POWER_UI)
+  // OLED + radio settings are ready. Give feedback before SD/model/Lua loading,
+  // without changing the power latch, startup checks or their execution order.
+  // Keep the ring at zero during init; waitSplash arms the timed 1.2 s overlay.
+  if (!(startOptions & OPENTX_START_NO_SPLASH) && !UNEXPECTED_SHUTDOWN() && SPLASH_NEEDED()) {
+    drawStartupAnimation(0, 120);
+    TRACE("TYVOR Starting preview: OLED/radio settings ready");
+  }
+#endif
 
 #if defined(STARTUP_ANIMATION)
   if (WAS_RESET_BY_WATCHDOG_OR_SOFTWARE()) {
@@ -1721,7 +1746,10 @@ void edgeTxInit()
 
 #if defined(GUI)
     if (!calibration_needed && !(startOptions & OPENTX_START_NO_SPLASH)) {
+#if !defined(SAOLALINK_DEVEBOX)
+      // Enabling the DevEBox splash must not enable startup audio.
       if (!g_eeGeneral.dontPlayHello) AUDIO_HELLO();
+#endif
 
       waitSplash();
     }

@@ -74,6 +74,215 @@ static bool isAsteriskDisplayed() {
 }
 #endif
 
+
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+#define TYVOR_HOME
+#include "tyvor_home.h"
+#include "tyvor_flight_timer.h"
+#include "tyvor_fc_arm.h"
+#include "tyvor_timer.h"
+#include "tyvor_flight_data.h"
+#include "telemetry/crossfire.h"
+
+// Auxiliary HOME pages keep their model header, without flight-mode text.
+static void drawTyvorHomeHeader()
+{
+  drawModelName(10, 1, g_model.header.name, g_eeGeneral.currModel, 0);
+}
+
+static TyvorFlightData readTyvorHomeFlightData()
+{
+  TyvorFlightData data;
+  data.arm=tyvorHomeFcArm();
+#if defined(CROSSFIRE)
+  if (!TELEMETRY_STREAMING()) return data;
+  // IDs below have CRSF semantics. Do not guess their meaning on another
+  // protocol or with an ambiguous mixture of telemetry-producing modules.
+  bool crossfire = false;
+  for (uint8_t module = 0; module < 2; ++module) {
+    if (g_model.moduleData[module].type == MODULE_TYPE_NONE) continue;
+    if (crossfire || !isModuleCrossfire(module)) return data;
+    crossfire = true;
+  }
+  if (!crossfire) return data;
+  const tmr10ms_t now = get_tmr10ms();
+  uint8_t seen[8] = {};
+  bool mwValid = false, dbmValid = false;
+  int32_t milliwatts = 0, dbm = 0;
+  for (uint8_t i = 0; i < MAX_TELEMETRY_SENSORS; ++i) {
+    const auto &sensor = g_model.telemetrySensors[i];
+    const auto &item = telemetryItems[i];
+    if (!sensor.isAvailable() || sensor.type != TELEM_TYPE_CUSTOM || sensor.subId ||
+        !tyvorFlightSensorFresh(true, item.timeout, TELEMETRY_SENSOR_TIMEOUT_START) ||
+        !tyvorFlightReceivedRecently(now, item.tyvorReceivedAt))
+      continue;
+    if (sensor.id == BATTERY_ID && sensor.instance == 0 && sensor.unit == UNIT_VOLTS) {
+      data.batteryValid = (++seen[0] == 1) &&
+          tyvorFlightVoltage(item.value, sensor.prec, data.batteryDecivolts);
+    }
+    else if (sensor.id == BATTERY_ID && sensor.instance == 3 &&
+             sensor.unit == UNIT_PERCENT && !sensor.prec) {
+      data.batteryPercentValid = (++seen[5] == 1) && item.value >= 0 && item.value <= 100;
+      if (data.batteryPercentValid) data.batteryPercent = uint8_t(item.value);
+    }
+    else if (sensor.id == FLIGHT_MODE_ID && sensor.instance == 0 &&
+             sensor.unit == UNIT_TEXT && !sensor.prec) {
+      if (!tyvorFlightSensorFresh(true, item.timeout, TELEMETRY_SENSOR_TIMEOUT_START, 12) ||
+          !tyvorFlightReceivedRecently(now, item.tyvorReceivedAt, 12 * 16))
+        continue;
+      data.modeValid = (++seen[4] == 1) &&
+          tyvorFlightModeText(item.text, sizeof(item.text), data.mode);
+    }
+    else if (sensor.id == GPS_ID && sensor.instance == 5 &&
+             sensor.unit == UNIT_RAW && !sensor.prec) {
+      data.satellitesValid = (++seen[1] == 1) && item.value >= 0 && item.value <= 255 &&
+          !sensor.autoOffset && !sensor.filter && !sensor.onlyPositive &&
+          !sensor.custom.ratio && !sensor.custom.offset;
+      if (data.satellitesValid) data.satellites = uint8_t(item.value);
+    }
+    else if (sensor.id == BARO_ALT_ID && sensor.instance == 0 && sensor.unit == UNIT_METERS) {
+      // Standard CRSF 0x09 is relative to the FC start/calibration point.
+      // 0x02 GAlt is not a substitute: BF4.5.5 changes its reference with ARM.
+      if (!tyvorFlightSensorFresh(true, item.timeout, TELEMETRY_SENSOR_TIMEOUT_START, 12) ||
+          !tyvorFlightReceivedRecently(now, item.tyvorReceivedAt, 192)) continue;
+      data.altitudeValid = (++seen[7] == 1) &&
+          !sensor.autoOffset && !sensor.filter && !sensor.onlyPositive &&
+          !sensor.custom.ratio && !sensor.custom.offset &&
+          tyvorFlightAltitudeMeters(item.value, sensor.prec, data.altitudeMeters);
+    }
+    else if (sensor.id == LINK_ID && sensor.instance == 2 &&
+             sensor.unit == UNIT_PERCENT && !sensor.prec) {
+      // RQly is uplink TX -> RX. TQly (instance 8) and TPWR are not LQ.
+      if (!tyvorFlightSensorFresh(true, item.timeout, TELEMETRY_SENSOR_TIMEOUT_START, 7) ||
+          !tyvorFlightReceivedRecently(now, item.tyvorReceivedAt, 100)) continue;
+      data.linkQualityValid = (++seen[6] == 1) && item.value >= 0 && item.value <= 100 &&
+          !sensor.autoOffset && !sensor.filter && !sensor.onlyPositive &&
+          !sensor.custom.ratio && !sensor.custom.offset;
+      if (data.linkQualityValid) data.linkQuality = uint8_t(item.value);
+    }
+    else if (sensor.id == LINK_ID && sensor.instance == 6 &&
+             sensor.unit == UNIT_MILLIWATTS && !sensor.prec) {
+      mwValid = (++seen[2] == 1) && item.value >= 0 && item.value <= 1000000;
+      if (mwValid) milliwatts = item.value;
+    }
+    else if (sensor.id == LINK_TX_ID && sensor.instance == 1 &&
+             sensor.unit == UNIT_DBM && !sensor.prec) {
+      dbmValid = (++seen[3] == 1) && item.value >= -60 && item.value <= 100;
+      if (dbmValid) dbm = item.value;
+    }
+  }
+  data.powerValid = mwValid || dbmValid;
+  data.powerDbm = !mwValid && dbmValid;
+  data.power = mwValid ? milliwatts : dbm;
+#endif
+  // ARM is resolved independently by the explicitly selected FC provider;
+  // the display never infers it from local controls or the timer state.
+  return data;
+}
+
+// Same five-segment, 1-bit battery strip for radio and drone. Two central
+// dashes distinguish unknown capacity from a valid reported empty battery.
+static void drawTyvorBatteryIcon(coord_t x, coord_t y, int8_t bars)
+{
+  lcdDrawRect(x, y, 25, 6, SOLID, FORCE);
+  lcdDrawSolidVerticalLine(x + 25, y + 2, 2, FORCE);
+  if (bars < 0 || bars > 5) {
+    lcdDrawSolidFilledRect(x + 9, y + 2, 2, 2, FORCE);
+    lcdDrawSolidFilledRect(x + 14, y + 2, 2, 2, FORCE);
+  }
+  else {
+    for (uint8_t i = 0; i < bars; ++i)
+      lcdDrawSolidFilledRect(x + 3 + 4 * i, y + 2, 3, 2, FORCE);
+  }
+}
+
+static void drawTyvorHomeMetric(coord_t x, const char *text)
+{
+  const LcdFlags font = getTextWidth(text) <= 35 ? 0 : SMLSIZE;
+  lcdDrawText(x, 55, text, font);
+}
+
+// HOME-only numeric bitmap, 12 rows versus the former 14-row digit ink.
+// Preserve the timer's existing blink/inverse warning without changing its value.
+static void drawTyvorHomeTimer(const char* text, bool warning)
+{
+  if (tyvorTimerWidth(text) > 65) {
+    const LcdFlags font = getTextWidth(text, 0, MIDSIZE) <= 65 ? MIDSIZE : 0;
+    lcdDrawText(5, 23, text, font | (warning ? BLINK | INVERS : 0));
+    return;
+  }
+  coord_t x = 5;
+  const bool inverse = warning && BLINK_ON_PHASE;
+  for (; *text; ++text) {
+    const uint8_t glyph = tyvorTimerGlyph(*text), width = tyvorTimerWidths[glyph];
+    for (uint8_t column = 0; column <= width; ++column) {
+      const uint16_t bits = column < width ? tyvorTimerColumns[glyph][column] : 0;
+      for (uint8_t row = 0; row < 12; ++row)
+        lcdDrawPoint(x + column, 23 + row, (bool(bits & (1 << row)) != inverse) ? FORCE : ERASE);
+    }
+    x += width + 1;
+  }
+}
+
+static void drawTyvorLinkQuality(coord_t x, coord_t y, int8_t bars)
+{
+  if (bars < 0) { lcdDrawText(x + 6, y, "?", SMLSIZE); return; }
+  for (uint8_t i = 0; i < 5; ++i) {
+    if (i < bars) lcdDrawSolidFilledRect(x + i * 4, y + 4 - i, 3, i + 2, FORCE);
+  }
+}
+
+static void drawTyvorHome()
+{
+  drawModelName(3, 1, g_model.header.name, g_eeGeneral.currModel, BOLD);
+  char text[16];
+  if (g_vbat100mV)
+    snprintf(text, sizeof(text), "%u.%uV", unsigned(g_vbat100mV / 10), unsigned(g_vbat100mV % 10));
+  else strcpy(text, "--");
+  lcdDrawText(112, 1, text, CENTERED | SMLSIZE | (IS_TXBATT_WARNING() ? BLINK | INVERS : 0));
+  drawTyvorBatteryIcon(99, 8, tyvorRadioBatteryBars(g_vbat100mV, g_eeGeneral.vBatMin, g_eeGeneral.vBatMax));
+  lcdDrawSolidHorizontalLine(2, 15, 124, FORCE);
+
+  lcdDrawText(5, 17, "TIME", SMLSIZE);
+  const TyvorFlightData data = readTyvorHomeFlightData();
+  drawTyvorLinkQuality(46, 17, tyvorHomeLinkBars(data));
+  if (tyvorFlightTimerHasTime()) tyvorHomeTimerText(text,tyvorFlightTimerSeconds());
+  else strcpy(text,"--:--");
+  drawTyvorHomeTimer(text,false);
+
+  lcdDrawSolidVerticalLine(73, 17, 20, FORCE);
+#if defined(DSM2)
+  const char *armTitle = moduleState[0].mode == MODULE_MODE_BIND ? "BIND" : "ARM STATE";
+#else
+  const char *armTitle = "ARM STATE";
+#endif
+  lcdDrawText(101, 17, armTitle, CENTERED | SMLSIZE);
+  lcdDrawRect(78, 25, 46, 12, SOLID, FORCE);
+  const char *arm = tyvorArmLabel(data.arm);
+  lcdDrawText(101, 28, arm, CENTERED | (getTextWidth(arm) <= 40 ? 0 : SMLSIZE));
+
+  lcdDrawText(5, 37, "MODE", SMLSIZE);
+  if (data.modeValid) {
+    char mode[17]; tyvorHomeModeLabel(data.mode, mode);
+    const LcdFlags modeFont = getTextWidth(mode, 0, SMLSIZE) <= 94 ? SMLSIZE : TINSIZE;
+    lcdDrawText(30, 37, mode, modeFont);
+  }
+  else lcdDrawText(30, 37, "--", SMLSIZE);
+  lcdDrawSolidHorizontalLine(2, 44, 124, FORCE);
+  lcdDrawSolidVerticalLine(43, 45, 18, FORCE);
+  lcdDrawSolidVerticalLine(85, 45, 18, FORCE);
+  lcdDrawText(22, 45, "DRONE", CENTERED | TINSIZE);
+  drawTyvorBatteryIcon(9, 57, tyvorDroneBatteryBars(data));
+  lcdDrawText(48, 47, "SATS", SMLSIZE);
+  lcdDrawText(90, 47, "ALT", SMLSIZE);
+  tyvorFlightBatteryText(text, data);
+  lcdDrawText(22, 50, text, CENTERED | (getTextWidth(text, 0, SMLSIZE) <= 38 ? SMLSIZE : TINSIZE));
+  tyvorFlightSatsText(text, data); drawTyvorHomeMetric(48, text);
+  tyvorFlightAltitudeText(text, data); drawTyvorHomeMetric(90, text);
+  if (isAsteriskDisplayed()) lcdDrawChar(76, 1, '!', INVERS | BLINK);
+}
+#endif
+
 void drawExternalAntennaAndRSSI()
 {
 #if defined(EXTERNAL_ANTENNA)
@@ -82,7 +291,11 @@ void drawExternalAntennaAndRSSI()
   }
 #endif
 
-  if (TELEMETRY_RSSI() > 0) {
+  if (TELEMETRY_RSSI() > 0
+#if defined(TYVOR_HOME)
+      && TELEMETRY_STREAMING()
+#endif
+  ) {
     auto warningRSSI = g_model.rfAlarms.warning;
     int8_t value = TELEMETRY_RSSI() - warningRSSI;
     uint8_t step = (RSSI_MAX - warningRSSI) / 4;
@@ -303,6 +516,12 @@ void displayBattVoltage()
 
 void onMainViewMenu(const char * result)
 {
+#if defined(TYVOR_HOME)
+  if (result == STR_CHANNELS_MONITOR) {
+    pushMenu(menuChannelsView);
+  }
+  else
+#endif
   if (result == STR_RESET_TIMER1) {
     timerReset(0);
   }
@@ -366,7 +585,13 @@ void drawSmallSwitch(coord_t x, coord_t y, int width, unsigned int index)
 
 void menuMainView(event_t event)
 {
+#if defined(TYVOR_HOME)
+  // One HOME only, including radios with a legacy view/bank saved in settings.
+  // Keep that preference untouched; diagnostics own their channel bank.
+  const uint8_t view = VIEW_OUTPUTS_VALUES;
+#else
   uint8_t view = g_eeGeneral.view;
+#endif
   uint8_t view_base = view & 0x0f;
 
   switch (event) {
@@ -386,13 +611,18 @@ void menuMainView(event_t event)
       */
     case EVT_KEY_NEXT_PAGE:
     case EVT_KEY_PREVIOUS_PAGE:
+#if !defined(TYVOR_HOME)
       if (view_base == VIEW_INPUTS)
         g_eeGeneral.view ^= ALTERNATE_VIEW;
       else
         g_eeGeneral.view = (g_eeGeneral.view + (4 * ALTERNATE_VIEW) + ((event == EVT_KEY_PREVIOUS_PAGE) ? -ALTERNATE_VIEW : ALTERNATE_VIEW)) % (4 * ALTERNATE_VIEW);
+#endif
       break;
 
     case EVT_KEY_CONTEXT_MENU:
+#if defined(TYVOR_HOME)
+      POPUP_MENU_ADD_ITEM(STR_CHANNELS_MONITOR);
+#endif
       if (modelHasNotes()) {
         POPUP_MENU_ADD_ITEM(STR_VIEW_NOTES);
       }
@@ -418,15 +648,19 @@ void menuMainView(event_t event)
       // TODO try to split those 2 cases on 9X
     case EVT_KEY_PREVIOUS_VIEW:
     case EVT_KEY_NEXT_VIEW:
+#if !defined(TYVOR_HOME)
       // TODO try to split those 2 cases on 9X
       g_eeGeneral.view = (event == EVT_KEY_PREVIOUS_VIEW ? (view_base == VIEW_COUNT - 1 ? 0 : view_base + 1) : (view_base == 0 ? VIEW_COUNT - 1 : view_base -
                                                                                                                                                   1));
       storageDirty(EE_GENERAL);
+#endif
       break;
 #else
     case EVT_KEY_NEXT_VIEW:
+#if !defined(TYVOR_HOME)
       g_eeGeneral.view = (view_base == 0 ? VIEW_COUNT - 1 : view_base - 1);
       storageDirty(EE_GENERAL);
+#endif
       break;
 #endif
 
@@ -450,6 +684,13 @@ void menuMainView(event_t event)
       break;
   }
 
+#if defined(TYVOR_HOME)
+  // HOME navigation is single-page above; diagnostic monitors remain available
+  // from the HOME context menu and Input/Mixer/Curve editor shortcuts.
+  const bool tyvorDashboard = (view == VIEW_OUTPUTS_VALUES);
+  if (tyvorDashboard) drawTyvorHome();
+  else
+#endif
   switch (view_base) {
     case VIEW_CHAN_MONITOR:
       menuChannelsViewCommon(event);
@@ -578,13 +819,23 @@ void menuMainView(event_t event)
       break;
   }
 
-  if (view_base != VIEW_CHAN_MONITOR) {
+  if (view_base != VIEW_CHAN_MONITOR
+#if defined(TYVOR_HOME)
+      && !tyvorDashboard
+#endif
+  ) {
+#if defined(TYVOR_HOME)
+    drawTyvorHomeHeader();
+    uint8_t mode = mixerCurrentFlightMode;
+#else
     // Flight Mode Name
     uint8_t mode = mixerCurrentFlightMode;
     lcdDrawSizedText(PHASE_X, PHASE_Y, g_model.flightModeData[mode].name, sizeof(g_model.flightModeData[mode].name));
 
     // Model Name
     drawModelName(MODELNAME_X, MODELNAME_Y, g_model.header.name, g_eeGeneral.currModel, BIGSIZE);
+
+#endif
 
     // Main Voltage (or alarm if any)
     displayVoltageOrAlarm();
@@ -624,10 +875,13 @@ void menuMainView(event_t event)
 #if defined(DSM2)
   if (moduleState[0].mode == MODULE_MODE_BIND) {
     // Issue 98
+#if defined(TYVOR_HOME)
+    if (!tyvorDashboard)
+#endif
     lcdDrawText(15 * FW, 0, "BIND", 0);
   }
 #endif
-#if defined(RTCLOCK)
+#if defined(RTCLOCK) && !defined(TYVOR_HOME)
   if (view_base != VIEW_CHAN_MONITOR && rtcIsValid()) {
     drawRtcTime(CLOCK_X, CLOCK_Y, LEFT|TIMEBLINK);
   }

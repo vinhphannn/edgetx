@@ -1,0 +1,45 @@
+{
+  "profile": "saolalink-devebox",
+  "compiler": "GNU Arm Embedded 14.2.1",
+  "generator": "Ninja",
+  "cmake_definitions": {
+    "CMAKE_TOOLCHAIN_FILE": "<repo>/cmake/toolchain/arm-none-eabi.cmake",
+    "EdgeTX_SUPERBUILD": "OFF",
+    "NATIVE_BUILD": "OFF",
+    "PCB": "X7",
+    "PCBREV": "SAOLALINK_V1",
+    "CMAKE_BUILD_TYPE": "Debug",
+    "DEFAULT_MODE": "2",
+    "TRANSLATIONS": "EN",
+    "USE_FW_LTO": "ON",
+    "BOOTLOADER": "ON",
+    "FIRMWARE_STRIP_BOOTLOADER": "OFF",
+    "FIRMWARE_FORMAT_UF2": "OFF",
+    "SAOLALINK_HSE_HZ": "8000000",
+    "SAOLALINK_DEVEBOX": "ON"
+  },
+  "external_paths_required": [
+    "Python3_EXECUTABLE (Studio venv)",
+    "ARM_TOOLCHAIN_DIR (14.2 rel1/bin)",
+    "CMAKE_MAKE_PROGRAM (Ninja)",
+    "GIT_EXECUTABLE"
+  ],
+  "targets": [
+    "hardware_defs",
+    "firmware"
+  ],
+  "parallel_jobs": 4,
+  "simulator": {
+    "NATIVE_BUILD": "ON",
+    "SIMU_TARGET": "ON",
+    "DISABLE_COMPANION": "ON",
+    "PCB": "X7",
+    "PCBREV": "SAOLALINK_V1",
+    "SAOLALINK_HSE_HZ": "8000000",
+    "SAOLALINK_DEVEBOX": "ON",
+    "TRANSLATIONS": "EN",
+    "ALL_LANGUAGES": "OFF",
+    "CMAKE_BUILD_TYPE": "Debug",
+    "target": "simu"
+  }
+}

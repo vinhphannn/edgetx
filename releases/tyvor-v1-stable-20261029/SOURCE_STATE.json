@@ -1,0 +1,590 @@
+{
+  "version": "TYVOR V1 STABLE — 2026-10-29",
+  "tag_proposed": "tyvor-v1-stable-20261029",
+  "branch": "SAOLALINKV1",
+  "base_commit": "de56c3127e0f288041759675149cb712f3f2a196",
+  "source_state": "Uncommitted WIP, explicit stage list provided; no commit or tag created",
+  "firmware_source": "build-tyvor-home-sats-alt/artifacts/firmware.bin",
+  "firmware_sha256": "a5c828f886c1fbeaf8b2b9fbc69d301beecee593cfae43434d7235a9f6b989fd",
+  "application_sha256": "6b44afc3036da11aed99ad672454bdc19f138f904b3f9be864432eb1fde7df55",
+  "boot_region_bytes": 32768,
+  "boot_region_sha256": "6a38127fe00c226b131c56c3bd2de563530cfb926ee75f371c3f0e58a1465f8b",
+  "bootloader_binary_bytes": 22580,
+  "bootloader_binary_sha256": "fc837f947dcfe43ea796d68c076e9119715827a3e2a2a5167e140c3a3699f508",
+  "application_origin": "0x08008000",
+  "flash_end": "0x08080000",
+  "flash_free_bytes": 11784,
+  "firmware_source_changed_for_backup": false,
+  "tracked_modified_files": [
+    "radio/src/edgetx.cpp",
+    "radio/src/gui/128x64/CMakeLists.txt",
+    "radio/src/gui/128x64/model_setup.cpp",
+    "radio/src/gui/128x64/radio_setup.cpp",
+    "radio/src/gui/128x64/splash.cpp",
+    "radio/src/gui/128x64/startup_shutdown.cpp",
+    "radio/src/gui/128x64/view_about.cpp",
+    "radio/src/gui/128x64/view_channels.cpp",
+    "radio/src/gui/128x64/view_main.cpp",
+    "radio/src/gui/common/stdlcd/menu_radio.cpp",
+    "radio/src/gui/common/stdlcd/splash.cpp",
+    "radio/src/main.cpp",
+    "radio/src/storage/sdcard_common.cpp",
+    "radio/src/targets/simu/display.cpp",
+    "radio/src/targets/simu/sdl_simu.cpp",
+    "radio/src/targets/simu/simulib.cpp",
+    "radio/src/telemetry/telemetry_sensors.h",
+    "radio/util/tests/test_saolalink_storage.py"
+  ],
+  "new_source_test_tool_files": [
+    "radio/src/bitmaps/128x64/tyvor_owl.png",
+    "radio/src/bitmaps/128x64/tyvor_wordmark.png",
+    "radio/src/gui/128x64/tyvor_fc_arm.cpp",
+    "radio/src/gui/128x64/tyvor_fc_arm.h",
+    "radio/src/gui/128x64/tyvor_flight_data.h",
+    "radio/src/gui/128x64/tyvor_flight_timer.cpp",
+    "radio/src/gui/128x64/tyvor_flight_timer.h",
+    "radio/src/gui/128x64/tyvor_home.h",
+    "radio/src/gui/128x64/tyvor_menu.h",
+    "radio/src/gui/128x64/tyvor_power.h",
+    "radio/src/gui/128x64/tyvor_timer.h",
+    "radio/src/targets/simu/desktop_controls.h",
+    "radio/util/tests/fixtures/tyvor_betaflight_arm.cpp",
+    "radio/util/tests/fixtures/tyvor_crsf_pipeline.cpp",
+    "radio/util/tests/fixtures/tyvor_home_altitude.cpp",
+    "radio/util/tests/fixtures/tyvor_home_rf_ui.cpp",
+    "radio/util/tests/fixtures/tyvor_time_arm_pipeline.cpp",
+    "radio/util/tests/fixtures/tyvor_universal_timer.cpp",
+    "radio/util/tests/run_tyvor_betaflight_arm.py",
+    "radio/util/tests/run_tyvor_crsf_pipeline.py",
+    "radio/util/tests/run_tyvor_home_altitude.py",
+    "radio/util/tests/run_tyvor_home_rf_ui.py",
+    "radio/util/tests/run_tyvor_time_arm_pipeline.py",
+    "radio/util/tests/run_tyvor_universal_timer.py",
+    "radio/util/tests/test_tyvor_betaflight_arm.py",
+    "radio/util/tests/test_tyvor_crsf_pipeline.py",
+    "radio/util/tests/test_tyvor_desktop.py",
+    "radio/util/tests/test_tyvor_flight_data.py",
+    "radio/util/tests/test_tyvor_flight_timer.py",
+    "radio/util/tests/test_tyvor_home.py",
+    "radio/util/tests/test_tyvor_home_altitude.py",
+    "radio/util/tests/test_tyvor_home_navigation.py",
+    "radio/util/tests/test_tyvor_home_rf_ui.py",
+    "radio/util/tests/test_tyvor_menus.py",
+    "radio/util/tests/test_tyvor_monochrome.py",
+    "radio/util/tests/test_tyvor_power.py",
+    "radio/util/tests/test_tyvor_time_arm.py",
+    "tools/render-tyvor-timer.py",
+    "tools/render-tyvor-wordmark.py",
+    "tools/run-tyvor-simulator.sh"
+  ],
+  "fixture_files": [
+    "docs/branding/tyvor-mono-polish/after/about.bin",
+    "docs/branding/tyvor-mono-polish/after/channel-monitor.bin",
+    "docs/branding/tyvor-mono-polish/after/hardware-bottom.bin",
+    "docs/branding/tyvor-mono-polish/after/hardware-focus.bin",
+    "docs/branding/tyvor-mono-polish/after/hardware-screen.bin",
+    "docs/branding/tyvor-mono-polish/after/hardware-top.bin",
+    "docs/branding/tyvor-mono-polish/after/home-return.bin",
+    "docs/branding/tyvor-mono-polish/after/home.bin",
+    "docs/branding/tyvor-mono-polish/after/model-popup.bin",
+    "docs/branding/tyvor-mono-polish/after/models.bin",
+    "docs/branding/tyvor-mono-polish/after/popup.bin",
+    "docs/branding/tyvor-mono-polish/after/settings-editing.bin",
+    "docs/branding/tyvor-mono-polish/after/settings-selection.bin",
+    "docs/branding/tyvor-mono-polish/after/settings.bin",
+    "docs/branding/tyvor-mono-polish/after/telemetry.bin",
+    "docs/branding/tyvor-mono-polish/after/tools.bin",
+    "docs/branding/tyvor-mono-polish/after/warning.bin",
+    "docs/branding/tyvor-mono-polish/before/about.bin",
+    "docs/branding/tyvor-mono-polish/before/channel-monitor.bin",
+    "docs/branding/tyvor-mono-polish/before/home-return.bin",
+    "docs/branding/tyvor-mono-polish/before/home.bin",
+    "docs/branding/tyvor-mono-polish/before/model-popup.bin",
+    "docs/branding/tyvor-mono-polish/before/models.bin",
+    "docs/branding/tyvor-mono-polish/before/popup.bin",
+    "docs/branding/tyvor-mono-polish/before/settings-editing.bin",
+    "docs/branding/tyvor-mono-polish/before/settings-selection.bin",
+    "docs/branding/tyvor-mono-polish/before/settings.bin",
+    "docs/branding/tyvor-mono-polish/before/telemetry.bin",
+    "docs/branding/tyvor-mono-polish/before/tools.bin",
+    "docs/branding/tyvor-mono-polish/before/warning.bin",
+    "docs/branding/tyvor-mono-polish/inverted/about-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/editing-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/home-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/model-popup-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/models-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/popup-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/selection-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/settings-inverted.bin",
+    "docs/branding/tyvor-mono-polish/inverted/warning-inverted.bin"
+  ],
+  "submodules": [
+    {
+      "path": "radio/src/thirdparty/AccessDenied",
+      "head": "6b04dfe4d90870f09b8aa41b8ccf952ba47a55e1",
+      "raw_equal": 0,
+      "crlf_only": 6,
+      "nested": [],
+      "other": []
+    },
+    {
+      "path": "radio/src/thirdparty/FreeRTOS",
+      "head": "3a22924e0a9ddbbc8b0758881c33b3422a5cc20d",
+      "raw_equal": 0,
+      "crlf_only": 0,
+      "nested": [
+        {
+          "path": "radio/src/thirdparty/FreeRTOS/portable/ThirdParty/Community-Supported-Ports",
+          "head": "bae4c7aa19009825ba48071a8fe25dcb8be84880",
+          "raw_equal": 0,
+          "crlf_only": 68,
+          "nested": [],
+          "other": []
+        },
+        {
+          "path": "radio/src/thirdparty/FreeRTOS/portable/ThirdParty/Partner-Supported-Ports",
+          "head": "abc22103e1e6634b33457d4127bff1ab62f27f90",
+          "raw_equal": 0,
+          "crlf_only": 40,
+          "nested": [],
+          "other": []
+        }
+      ],
+      "other": []
+    },
+    {
+      "path": "radio/src/thirdparty/lvgl",
+      "head": "5f129c540ec43a4e5aebff9f77b3688b57a78063",
+      "raw_equal": 0,
+      "crlf_only": 1106,
+      "nested": [],
+      "other": []
+    },
+    {
+      "path": "radio/src/thirdparty/stb",
+      "head": "31c1ad37456438565541f4919958214b6e762fb4",
+      "raw_equal": 0,
+      "crlf_only": 135,
+      "nested": [],
+      "other": []
+    },
+    {
+      "path": "radio/src/thirdparty/uf2",
+      "head": "d03b585ed780ed51bb0d1e6e8cf233aacb408305",
+      "raw_equal": 0,
+      "crlf_only": 19,
+      "nested": [],
+      "other": []
+    }
+  ],
+  "source_files": {
+    "docs/branding/tyvor-mono-polish/after/about.bin": {
+      "bytes_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99",
+      "lf_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99"
+    },
+    "docs/branding/tyvor-mono-polish/after/channel-monitor.bin": {
+      "bytes_sha256": "841a11c9b2ed36f06a65917b3328f347ce099f65efb956b0e2a54565717e4a76",
+      "lf_sha256": "841a11c9b2ed36f06a65917b3328f347ce099f65efb956b0e2a54565717e4a76"
+    },
+    "docs/branding/tyvor-mono-polish/after/hardware-bottom.bin": {
+      "bytes_sha256": "241eee85a774b09c5c2e1d76f30de6bdd53be37039705ba0ed126609c5bfd37c",
+      "lf_sha256": "241eee85a774b09c5c2e1d76f30de6bdd53be37039705ba0ed126609c5bfd37c"
+    },
+    "docs/branding/tyvor-mono-polish/after/hardware-focus.bin": {
+      "bytes_sha256": "8555e69fbb18f7f53e8850a23e2ac57ad2a3cc11f2f5383c78e7dcfa095516c4",
+      "lf_sha256": "8555e69fbb18f7f53e8850a23e2ac57ad2a3cc11f2f5383c78e7dcfa095516c4"
+    },
+    "docs/branding/tyvor-mono-polish/after/hardware-screen.bin": {
+      "bytes_sha256": "03146e395ff4f480a3f64d917f9af675ea805bae3adab0532b9065fa899d0c64",
+      "lf_sha256": "03146e395ff4f480a3f64d917f9af675ea805bae3adab0532b9065fa899d0c64"
+    },
+    "docs/branding/tyvor-mono-polish/after/hardware-top.bin": {
+      "bytes_sha256": "c137840ae5f52f5b5379c34722ed9f92cd8b68752771d0fc06a917947bfc57e1",
+      "lf_sha256": "c137840ae5f52f5b5379c34722ed9f92cd8b68752771d0fc06a917947bfc57e1"
+    },
+    "docs/branding/tyvor-mono-polish/after/home-return.bin": {
+      "bytes_sha256": "2a706e6f6fd5219c8786ba541fb334cd0365aa4fc65f72127d4a5560fc753dd5",
+      "lf_sha256": "2a706e6f6fd5219c8786ba541fb334cd0365aa4fc65f72127d4a5560fc753dd5"
+    },
+    "docs/branding/tyvor-mono-polish/after/home.bin": {
+      "bytes_sha256": "21d27530d39d1cb45d5b36dfaa8459374a3efc1eba5fca4417d8cd561a36d7f5",
+      "lf_sha256": "21d27530d39d1cb45d5b36dfaa8459374a3efc1eba5fca4417d8cd561a36d7f5"
+    },
+    "docs/branding/tyvor-mono-polish/after/model-popup.bin": {
+      "bytes_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400",
+      "lf_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400"
+    },
+    "docs/branding/tyvor-mono-polish/after/models.bin": {
+      "bytes_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3",
+      "lf_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3"
+    },
+    "docs/branding/tyvor-mono-polish/after/popup.bin": {
+      "bytes_sha256": "cbb342dfed7657688506eec85ac982bc745cdbf13ec36daec19a700289c2bc6e",
+      "lf_sha256": "cbb342dfed7657688506eec85ac982bc745cdbf13ec36daec19a700289c2bc6e"
+    },
+    "docs/branding/tyvor-mono-polish/after/settings-editing.bin": {
+      "bytes_sha256": "7baf5c3e0fc4400a97b37d63b3aad9cc9b1898fce7b35b774c9567aa00fdc8a3",
+      "lf_sha256": "7baf5c3e0fc4400a97b37d63b3aad9cc9b1898fce7b35b774c9567aa00fdc8a3"
+    },
+    "docs/branding/tyvor-mono-polish/after/settings-selection.bin": {
+      "bytes_sha256": "83d254c044810d24826bca8b9f4f400f69e70eda4d3eb8812c2c350782a90059",
+      "lf_sha256": "83d254c044810d24826bca8b9f4f400f69e70eda4d3eb8812c2c350782a90059"
+    },
+    "docs/branding/tyvor-mono-polish/after/settings.bin": {
+      "bytes_sha256": "8e237fe7e8dec6e73e1eeac65746956b98b7454397ab16a9ef7361336c873e2e",
+      "lf_sha256": "8e237fe7e8dec6e73e1eeac65746956b98b7454397ab16a9ef7361336c873e2e"
+    },
+    "docs/branding/tyvor-mono-polish/after/telemetry.bin": {
+      "bytes_sha256": "64aea8d4852d519fcaff758bb390400cc4e26ae4f104dae8b5941fe902087351",
+      "lf_sha256": "64aea8d4852d519fcaff758bb390400cc4e26ae4f104dae8b5941fe902087351"
+    },
+    "docs/branding/tyvor-mono-polish/after/tools.bin": {
+      "bytes_sha256": "10eea5e7f6bd613644b87dcafd5c066848b64676c14ce1aa5119808ab102c0e9",
+      "lf_sha256": "10eea5e7f6bd613644b87dcafd5c066848b64676c14ce1aa5119808ab102c0e9"
+    },
+    "docs/branding/tyvor-mono-polish/after/warning.bin": {
+      "bytes_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75",
+      "lf_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75"
+    },
+    "docs/branding/tyvor-mono-polish/before/about.bin": {
+      "bytes_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99",
+      "lf_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99"
+    },
+    "docs/branding/tyvor-mono-polish/before/channel-monitor.bin": {
+      "bytes_sha256": "460d8971e876835c817e6ad68c7b4871963721e1cce3d886313bd07a4b9996a8",
+      "lf_sha256": "460d8971e876835c817e6ad68c7b4871963721e1cce3d886313bd07a4b9996a8"
+    },
+    "docs/branding/tyvor-mono-polish/before/home-return.bin": {
+      "bytes_sha256": "74934f7af15b656304d34980e25738c46ca8d2103045202d38f9c57f0a758632",
+      "lf_sha256": "74934f7af15b656304d34980e25738c46ca8d2103045202d38f9c57f0a758632"
+    },
+    "docs/branding/tyvor-mono-polish/before/home.bin": {
+      "bytes_sha256": "60d18b68c57c280c0fe2d74fa3c30ce91d90d3e51b86b50859eb304f0c6ca0c9",
+      "lf_sha256": "60d18b68c57c280c0fe2d74fa3c30ce91d90d3e51b86b50859eb304f0c6ca0c9"
+    },
+    "docs/branding/tyvor-mono-polish/before/model-popup.bin": {
+      "bytes_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400",
+      "lf_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400"
+    },
+    "docs/branding/tyvor-mono-polish/before/models.bin": {
+      "bytes_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3",
+      "lf_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3"
+    },
+    "docs/branding/tyvor-mono-polish/before/popup.bin": {
+      "bytes_sha256": "a43933729481ede316a598502e99a8d79f6e005d84adc15e353c2ed838c9e61e",
+      "lf_sha256": "a43933729481ede316a598502e99a8d79f6e005d84adc15e353c2ed838c9e61e"
+    },
+    "docs/branding/tyvor-mono-polish/before/settings-editing.bin": {
+      "bytes_sha256": "dcea579b9743ae0bb771dbe4c221a7863e076d74a7789b896d164263aa3b87d3",
+      "lf_sha256": "dcea579b9743ae0bb771dbe4c221a7863e076d74a7789b896d164263aa3b87d3"
+    },
+    "docs/branding/tyvor-mono-polish/before/settings-selection.bin": {
+      "bytes_sha256": "fc9de3fbf5e42f82fc5eb8c771607b299bc125f11721ffeb5b7eea33e29e5358",
+      "lf_sha256": "fc9de3fbf5e42f82fc5eb8c771607b299bc125f11721ffeb5b7eea33e29e5358"
+    },
+    "docs/branding/tyvor-mono-polish/before/settings.bin": {
+      "bytes_sha256": "e172bb4d0e1d51ad715d0f9941a4835fea91dc72da398cde1370798ebad9587c",
+      "lf_sha256": "e172bb4d0e1d51ad715d0f9941a4835fea91dc72da398cde1370798ebad9587c"
+    },
+    "docs/branding/tyvor-mono-polish/before/telemetry.bin": {
+      "bytes_sha256": "baf2e243b05c016b85c1fed146a29f09f932e080ba79a64f21fa550d2b95da5f",
+      "lf_sha256": "baf2e243b05c016b85c1fed146a29f09f932e080ba79a64f21fa550d2b95da5f"
+    },
+    "docs/branding/tyvor-mono-polish/before/tools.bin": {
+      "bytes_sha256": "10eea5e7f6bd613644b87dcafd5c066848b64676c14ce1aa5119808ab102c0e9",
+      "lf_sha256": "10eea5e7f6bd613644b87dcafd5c066848b64676c14ce1aa5119808ab102c0e9"
+    },
+    "docs/branding/tyvor-mono-polish/before/warning.bin": {
+      "bytes_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75",
+      "lf_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/about-inverted.bin": {
+      "bytes_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99",
+      "lf_sha256": "6a16a0c1497a47c64080252c2831aafd7bb51754fa2ead67f4be22b0e481ac99"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/editing-inverted.bin": {
+      "bytes_sha256": "feafb0a35541f3b6b301a0998b601bda486329142c87566a4c6f8111f776f429",
+      "lf_sha256": "feafb0a35541f3b6b301a0998b601bda486329142c87566a4c6f8111f776f429"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/home-inverted.bin": {
+      "bytes_sha256": "75dea90991f4907d4607d4089aa27df72564a2d3a157457e802e5c24a5ba7d8d",
+      "lf_sha256": "75dea90991f4907d4607d4089aa27df72564a2d3a157457e802e5c24a5ba7d8d"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/model-popup-inverted.bin": {
+      "bytes_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400",
+      "lf_sha256": "e20b4bd8c685ad885b33934dbb9090a4cc5b977adef83bbbdd950671beaee400"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/models-inverted.bin": {
+      "bytes_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3",
+      "lf_sha256": "81d4d775ee0297ee38b3c84b49dee5f5542385be4081f2f20dcfcb0413e308a3"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/popup-inverted.bin": {
+      "bytes_sha256": "ac19f027eeac6e765620c9470c76f03cdab2eea6fd33428f81a5bf1ad26ccd48",
+      "lf_sha256": "ac19f027eeac6e765620c9470c76f03cdab2eea6fd33428f81a5bf1ad26ccd48"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/selection-inverted.bin": {
+      "bytes_sha256": "4f8539a6777610335e4f1f459f87bc89fab97b82700aafc4a462cbfb910f0bec",
+      "lf_sha256": "4f8539a6777610335e4f1f459f87bc89fab97b82700aafc4a462cbfb910f0bec"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/settings-inverted.bin": {
+      "bytes_sha256": "a9a2406a53a911a4f339090875df808c9420b6f5f163842daf84cf2b62687daf",
+      "lf_sha256": "a9a2406a53a911a4f339090875df808c9420b6f5f163842daf84cf2b62687daf"
+    },
+    "docs/branding/tyvor-mono-polish/inverted/warning-inverted.bin": {
+      "bytes_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75",
+      "lf_sha256": "d6341dabbffa6f14d9203ffa2e602b9d1a5c11b90169e54e33ed9c119bdbfa75"
+    },
+    "docs/branding/tyvor-simulator-upgrade/FONT_LICENSE.md": {
+      "bytes_sha256": "dcb720bd85dfc392066739b401f2fdddac26c17dbd5adffd0b103a9fc316f94a",
+      "lf_sha256": "dcb720bd85dfc392066739b401f2fdddac26c17dbd5adffd0b103a9fc316f94a"
+    },
+    "docs/branding/tyvor-simulator-upgrade/font-source.json": {
+      "bytes_sha256": "324241b388670b127d10edd655759646cca60818707f2a9c8c6735df0956dde7",
+      "lf_sha256": "324241b388670b127d10edd655759646cca60818707f2a9c8c6735df0956dde7"
+    },
+    "docs/building/tyvor-simulator-led-guard.patch": {
+      "bytes_sha256": "572fc42e13a0c30ae1f57fd2e4575fb04038a1775fe7aabef22b82e203ad1fff",
+      "lf_sha256": "572fc42e13a0c30ae1f57fd2e4575fb04038a1775fe7aabef22b82e203ad1fff"
+    },
+    "docs/building/tyvor-simulator.md": {
+      "bytes_sha256": "80345b83d9b835b5a9be5168d4856c4b1aa8483128caeb49668b2c4a38e33652",
+      "lf_sha256": "80345b83d9b835b5a9be5168d4856c4b1aa8483128caeb49668b2c4a38e33652"
+    },
+    "radio/src/bitmaps/128x64/tyvor_owl.png": {
+      "bytes_sha256": "594e30a5e5d97ad8acf5471cc6c3112b012f171803739a88be46c44468e91bb5",
+      "lf_sha256": "594e30a5e5d97ad8acf5471cc6c3112b012f171803739a88be46c44468e91bb5"
+    },
+    "radio/src/bitmaps/128x64/tyvor_wordmark.png": {
+      "bytes_sha256": "f6ed065c8a15cca2e274d11e70847426e4b45940d458209d791d5db6af051404",
+      "lf_sha256": "f6ed065c8a15cca2e274d11e70847426e4b45940d458209d791d5db6af051404"
+    },
+    "radio/src/edgetx.cpp": {
+      "bytes_sha256": "1325939719e590f0ce04300ea7f339b13c60d11e38a0e0b68d324be3505f6cf8",
+      "lf_sha256": "c47c11c674de885bcecdf84f1a72d3a7d8034dac958df9b985ea3220e58657d0"
+    },
+    "radio/src/gui/128x64/CMakeLists.txt": {
+      "bytes_sha256": "68fe055621cf06e1bbc4efc5582d4752f40250cb0de90f17a6a74c1ec2a45a4e",
+      "lf_sha256": "58e66eed424e5908969ebc3428b9d2c691301ca53d70be7e56be89a5d896e615"
+    },
+    "radio/src/gui/128x64/model_setup.cpp": {
+      "bytes_sha256": "d86a7a545a93c9b93404405c853fa0d52bc9e96168f70a9adf7c1c3d0c604d2c",
+      "lf_sha256": "19b4d2232398f1b6bbf953b09d43985e636ef627cfe55d9347b9fb6d4baf259d"
+    },
+    "radio/src/gui/128x64/radio_setup.cpp": {
+      "bytes_sha256": "2264af27ef9b6de9d839e4b312cf97ae2dbe0105282cb2b1f047ece36018c495",
+      "lf_sha256": "b88dbe436b28151c7753f6179e116f1ffb1299ca88aa856c65ac180caa78b598"
+    },
+    "radio/src/gui/128x64/splash.cpp": {
+      "bytes_sha256": "96a07d851c6d02159d63359f1347fac9842178cc3f131e6bc24ee9663f7e2240",
+      "lf_sha256": "997025e3ab1fb4f1b46282f620ff595909555cb5effa62ab534be1d0050fe853"
+    },
+    "radio/src/gui/128x64/startup_shutdown.cpp": {
+      "bytes_sha256": "aae2a355d7baf5b726265a44add8241ac8d3af904a28a22e962f46d94155521a",
+      "lf_sha256": "3c061f6ce2314de523597e348a0657a8a514083bc55987077cb92eaad5f7dbe8"
+    },
+    "radio/src/gui/128x64/tyvor_fc_arm.cpp": {
+      "bytes_sha256": "c68b32186d70ee7d61b89938592ba38e2a396ba827d462042cd8781ed8fe5918",
+      "lf_sha256": "c68b32186d70ee7d61b89938592ba38e2a396ba827d462042cd8781ed8fe5918"
+    },
+    "radio/src/gui/128x64/tyvor_fc_arm.h": {
+      "bytes_sha256": "681e0a4d07134345848765f123fb1a4e7a1dbeb5fdd9345f2f4c84de2c4ebd84",
+      "lf_sha256": "681e0a4d07134345848765f123fb1a4e7a1dbeb5fdd9345f2f4c84de2c4ebd84"
+    },
+    "radio/src/gui/128x64/tyvor_flight_data.h": {
+      "bytes_sha256": "4d58e5a4e61e7788a68a459bddfcacde093baaefb742310dc4d9ff4b1ff64ca9",
+      "lf_sha256": "4d58e5a4e61e7788a68a459bddfcacde093baaefb742310dc4d9ff4b1ff64ca9"
+    },
+    "radio/src/gui/128x64/tyvor_flight_timer.cpp": {
+      "bytes_sha256": "4e724787027e99079eb19d914c9d47283e98e9e8ed3d76f58439f3d2b2e4d066",
+      "lf_sha256": "4e724787027e99079eb19d914c9d47283e98e9e8ed3d76f58439f3d2b2e4d066"
+    },
+    "radio/src/gui/128x64/tyvor_flight_timer.h": {
+      "bytes_sha256": "cc68705f9a4616c4a60f98f7bab054e95f0a538cdfdd87f8e6bb25b712fc9609",
+      "lf_sha256": "cc68705f9a4616c4a60f98f7bab054e95f0a538cdfdd87f8e6bb25b712fc9609"
+    },
+    "radio/src/gui/128x64/tyvor_home.h": {
+      "bytes_sha256": "898b12abdb1b7c569f6e9fc857a210ebf70f6b484ca9a45d2d029cfa30e2b849",
+      "lf_sha256": "898b12abdb1b7c569f6e9fc857a210ebf70f6b484ca9a45d2d029cfa30e2b849"
+    },
+    "radio/src/gui/128x64/tyvor_menu.h": {
+      "bytes_sha256": "f02d40666210d02257b003856e803b4d66f893e45f81babd974e0d2ff6a1f349",
+      "lf_sha256": "f02d40666210d02257b003856e803b4d66f893e45f81babd974e0d2ff6a1f349"
+    },
+    "radio/src/gui/128x64/tyvor_power.h": {
+      "bytes_sha256": "c3f3bceed77dc54b55d8ad052eb48acd2ab32b32dfdfb4bcb4bde52fed975065",
+      "lf_sha256": "c3f3bceed77dc54b55d8ad052eb48acd2ab32b32dfdfb4bcb4bde52fed975065"
+    },
+    "radio/src/gui/128x64/tyvor_timer.h": {
+      "bytes_sha256": "b4dd255e55edb46932e12a9a850694dd606323a8af2e5dd9bde7e19a5a3308f3",
+      "lf_sha256": "b4dd255e55edb46932e12a9a850694dd606323a8af2e5dd9bde7e19a5a3308f3"
+    },
+    "radio/src/gui/128x64/view_about.cpp": {
+      "bytes_sha256": "55338407a826d8377d28bf1c4dd10ee5992bdae435dd6d4f9fa7db6bf4b5f0f9",
+      "lf_sha256": "5df77b9d22050b3eefe2126b4940871e7984c6a2cd4cb3f88e80a4bbb61480c4"
+    },
+    "radio/src/gui/128x64/view_channels.cpp": {
+      "bytes_sha256": "e9b06faa73c25bbf9b763edf3c82e883cc70ca2e5d1569dc34d2e21dceec5b17",
+      "lf_sha256": "e3dcd3458d06d3fc3362ec79c8918d57728c1796f8f6faaa07ea7c82962db048"
+    },
+    "radio/src/gui/128x64/view_main.cpp": {
+      "bytes_sha256": "00d859fa64df24e4a4335d6452a7e96247b3b4cb390955964498ccef0488cc9b",
+      "lf_sha256": "43244b126414aca04e00c7fee9d2512c8672a17f2075f521d86c98e0343b9858"
+    },
+    "radio/src/gui/common/stdlcd/menu_radio.cpp": {
+      "bytes_sha256": "c0a0c837acd003599acb320d63c47ae35c098ac9d964fd667f1d8124caa94eb8",
+      "lf_sha256": "c342dfcba0fcdcc9d5a72e288164eeac2d45ead29054b3ead3f0e5f766de5043"
+    },
+    "radio/src/gui/common/stdlcd/splash.cpp": {
+      "bytes_sha256": "57cff046f7b736373494b8c41fd7aea3f6166f9fdba9b3328f38bc4f85075d75",
+      "lf_sha256": "28818c414399d0519f54d987a976a678f60b067c7bda0f8ec94c06acfc6290d0"
+    },
+    "radio/src/main.cpp": {
+      "bytes_sha256": "4149f3211ee57ab5eb398ed199451b72967a6e8637d253c00ff54eace76ac97e",
+      "lf_sha256": "f4dba684a6b9b1fb58114551dbb392a1510ae0cc78d39b1edbc78e64dcb3a1a3"
+    },
+    "radio/src/storage/sdcard_common.cpp": {
+      "bytes_sha256": "ed12ab0cf53fda1e9fb9816343b04058c4d2edb661aa24738bc432a432870108",
+      "lf_sha256": "f422ceac745b2548b8625f9eeedcad9122b8b29f9d8cb4b25beecfc778ccb863"
+    },
+    "radio/src/targets/simu/desktop_controls.h": {
+      "bytes_sha256": "e849fbb97051439fe1fac054e309d9a4ce28c7b13b1431357c94733be72d31e2",
+      "lf_sha256": "e849fbb97051439fe1fac054e309d9a4ce28c7b13b1431357c94733be72d31e2"
+    },
+    "radio/src/targets/simu/display.cpp": {
+      "bytes_sha256": "715716dd18193cbdaf26f44ad65a5edac623425f4f27c81e86bbe3d453edc853",
+      "lf_sha256": "2b3ff390697f6faa7ff03f4c06a79fcd6948931698c763455fb803c08d7dd8af"
+    },
+    "radio/src/targets/simu/sdl_simu.cpp": {
+      "bytes_sha256": "a19c5c8b62e62327cff8364f74317ff1851a3acedef767c9224173626bf9c489",
+      "lf_sha256": "27de9bf79c96bf027e5197fdc10da9046d13b894a9e0675782eff0e5e3f2b73e"
+    },
+    "radio/src/targets/simu/simulib.cpp": {
+      "bytes_sha256": "c18b80f13546318d791666da25c3a5bc2b34880984baaed68edc156a9be71aca",
+      "lf_sha256": "690d2fd47e8c550bf0fce95120ec9a77446a42d6dc6162106ae4bf8cb97ce12b"
+    },
+    "radio/src/telemetry/telemetry_sensors.h": {
+      "bytes_sha256": "4a1054156496136010557ab302133b354fa3adc2038f5656198982ce1b099fa8",
+      "lf_sha256": "64dfa59b4b445f92907cdaaca1b795c30f4257fb6767f29a446da87f170f62c8"
+    },
+    "radio/util/tests/fixtures/tyvor_betaflight_arm.cpp": {
+      "bytes_sha256": "01b6fdc3b5c1f71ea01ecccdca55ddecff7d5db89cf6f949f67365f2df9ec44c",
+      "lf_sha256": "01b6fdc3b5c1f71ea01ecccdca55ddecff7d5db89cf6f949f67365f2df9ec44c"
+    },
+    "radio/util/tests/fixtures/tyvor_crsf_pipeline.cpp": {
+      "bytes_sha256": "4fcc6042668e833b9fdd7987526e7fa71946e0f604e5f41fbcaa99c92298fb64",
+      "lf_sha256": "4fcc6042668e833b9fdd7987526e7fa71946e0f604e5f41fbcaa99c92298fb64"
+    },
+    "radio/util/tests/fixtures/tyvor_home_altitude.cpp": {
+      "bytes_sha256": "d6861f65849555e2abd364d26929b98078b59289af9b7389b9cfb0ed2710050e",
+      "lf_sha256": "d6861f65849555e2abd364d26929b98078b59289af9b7389b9cfb0ed2710050e"
+    },
+    "radio/util/tests/fixtures/tyvor_home_rf_ui.cpp": {
+      "bytes_sha256": "207469a621031d3f8b3a1d00b8f147c99e29a84fdbb8bc3408223a44245c7fe7",
+      "lf_sha256": "207469a621031d3f8b3a1d00b8f147c99e29a84fdbb8bc3408223a44245c7fe7"
+    },
+    "radio/util/tests/fixtures/tyvor_time_arm_pipeline.cpp": {
+      "bytes_sha256": "8fc2d034a39805438ba9003d23eba062930cb52945011424ac45feb2e40e184b",
+      "lf_sha256": "8fc2d034a39805438ba9003d23eba062930cb52945011424ac45feb2e40e184b"
+    },
+    "radio/util/tests/fixtures/tyvor_universal_timer.cpp": {
+      "bytes_sha256": "16228b5492fdd7995259d064409d55cde36290cdbfd62efd959fb1f387f4a39a",
+      "lf_sha256": "16228b5492fdd7995259d064409d55cde36290cdbfd62efd959fb1f387f4a39a"
+    },
+    "radio/util/tests/run_tyvor_betaflight_arm.py": {
+      "bytes_sha256": "0553b84c91e4f469b658fb4baa3b224e96d432b3c8136c7fc5c98683eb8fed0a",
+      "lf_sha256": "0553b84c91e4f469b658fb4baa3b224e96d432b3c8136c7fc5c98683eb8fed0a"
+    },
+    "radio/util/tests/run_tyvor_crsf_pipeline.py": {
+      "bytes_sha256": "8f2f6e8c561fc367116b6fe658762d9258eb2bb212d20e79afd8f9a533718bbf",
+      "lf_sha256": "8f2f6e8c561fc367116b6fe658762d9258eb2bb212d20e79afd8f9a533718bbf"
+    },
+    "radio/util/tests/run_tyvor_home_altitude.py": {
+      "bytes_sha256": "d0397511b24006116d002b18b3d9580edbfeb536651d278d1f05b277cb86ff05",
+      "lf_sha256": "d0397511b24006116d002b18b3d9580edbfeb536651d278d1f05b277cb86ff05"
+    },
+    "radio/util/tests/run_tyvor_home_rf_ui.py": {
+      "bytes_sha256": "04174357aa1533037e1bf672c7f93cda9a1dba64db480eb36d064be12855c771",
+      "lf_sha256": "04174357aa1533037e1bf672c7f93cda9a1dba64db480eb36d064be12855c771"
+    },
+    "radio/util/tests/run_tyvor_time_arm_pipeline.py": {
+      "bytes_sha256": "1aee48fb3fa4640ece29df7548a160e3cf1b989254bea27f4ecfb95071152bbf",
+      "lf_sha256": "1aee48fb3fa4640ece29df7548a160e3cf1b989254bea27f4ecfb95071152bbf"
+    },
+    "radio/util/tests/run_tyvor_universal_timer.py": {
+      "bytes_sha256": "0aedcf6ade96203e068887725bbad74c6fb47199e7de973cb17fcd3402a83f34",
+      "lf_sha256": "0aedcf6ade96203e068887725bbad74c6fb47199e7de973cb17fcd3402a83f34"
+    },
+    "radio/util/tests/test_saolalink_storage.py": {
+      "bytes_sha256": "6bd8d0ee21c2fbf24bc2ff8d7060b21e9fa437ae90e16ab5ea9fb8458024505a",
+      "lf_sha256": "dba395e0848337fd03be0452664bb81aa1f8af8f9c2861cc5cfe9ab6f34062e1"
+    },
+    "radio/util/tests/test_tyvor_betaflight_arm.py": {
+      "bytes_sha256": "15d89122a80a275b37caf067bab11ebb4ac802af4de89a4baa1ab391f28b712e",
+      "lf_sha256": "15d89122a80a275b37caf067bab11ebb4ac802af4de89a4baa1ab391f28b712e"
+    },
+    "radio/util/tests/test_tyvor_crsf_pipeline.py": {
+      "bytes_sha256": "e60e344ebfbe5aa7fa1c137e90e4e0d31c81bec3fbffef903a93621fbb25ad7f",
+      "lf_sha256": "e60e344ebfbe5aa7fa1c137e90e4e0d31c81bec3fbffef903a93621fbb25ad7f"
+    },
+    "radio/util/tests/test_tyvor_desktop.py": {
+      "bytes_sha256": "08f7fad7a2809bb558551b738d22825624a4e7ff27efa5ab7c55bb73ee05a4c2",
+      "lf_sha256": "08f7fad7a2809bb558551b738d22825624a4e7ff27efa5ab7c55bb73ee05a4c2"
+    },
+    "radio/util/tests/test_tyvor_flight_data.py": {
+      "bytes_sha256": "b75127b310eb3c4a31e78ebb46d2d15045f7d95cd5641de3a74011fbcf820ed3",
+      "lf_sha256": "b75127b310eb3c4a31e78ebb46d2d15045f7d95cd5641de3a74011fbcf820ed3"
+    },
+    "radio/util/tests/test_tyvor_flight_timer.py": {
+      "bytes_sha256": "74e63c84ffc7dd3852cd186008f98ab5c02801f11a6c39c71eb8a567f5f1d83a",
+      "lf_sha256": "74e63c84ffc7dd3852cd186008f98ab5c02801f11a6c39c71eb8a567f5f1d83a"
+    },
+    "radio/util/tests/test_tyvor_home.py": {
+      "bytes_sha256": "789751dba93bdc57885ca846ff89bd9534b7e1263dc52e88a223a418e0c3741c",
+      "lf_sha256": "789751dba93bdc57885ca846ff89bd9534b7e1263dc52e88a223a418e0c3741c"
+    },
+    "radio/util/tests/test_tyvor_home_altitude.py": {
+      "bytes_sha256": "065dc55eaf214db52e43e20775e77d5a564a31e982d9db1d9bcfa9bc5789bae6",
+      "lf_sha256": "065dc55eaf214db52e43e20775e77d5a564a31e982d9db1d9bcfa9bc5789bae6"
+    },
+    "radio/util/tests/test_tyvor_home_navigation.py": {
+      "bytes_sha256": "8f0908669ae9d073705e97314122f7ebfc1c8804c23372ab6739a3540ff82fc8",
+      "lf_sha256": "8f0908669ae9d073705e97314122f7ebfc1c8804c23372ab6739a3540ff82fc8"
+    },
+    "radio/util/tests/test_tyvor_home_rf_ui.py": {
+      "bytes_sha256": "9a1377671e2d718b47afb7219ea42782c0e5affb50228b65f18d0166601cc2aa",
+      "lf_sha256": "9a1377671e2d718b47afb7219ea42782c0e5affb50228b65f18d0166601cc2aa"
+    },
+    "radio/util/tests/test_tyvor_menus.py": {
+      "bytes_sha256": "f40145113e0d08b03e8f18e8138a92349e5ca2988e461d72438105b8c80826ea",
+      "lf_sha256": "f40145113e0d08b03e8f18e8138a92349e5ca2988e461d72438105b8c80826ea"
+    },
+    "radio/util/tests/test_tyvor_monochrome.py": {
+      "bytes_sha256": "b2309516b39ed864a5d4306a2dab3b1d18257f08bd29b7d2e796646f14b13359",
+      "lf_sha256": "b2309516b39ed864a5d4306a2dab3b1d18257f08bd29b7d2e796646f14b13359"
+    },
+    "radio/util/tests/test_tyvor_power.py": {
+      "bytes_sha256": "ed86ab88acba985195632bc54ae5660760cabc13689b2841041108087ce458ca",
+      "lf_sha256": "ed86ab88acba985195632bc54ae5660760cabc13689b2841041108087ce458ca"
+    },
+    "radio/util/tests/test_tyvor_time_arm.py": {
+      "bytes_sha256": "d55e4e0a707cbdfe6c07f407c0b0ef49aff97712e086c323982078f8e92ee34c",
+      "lf_sha256": "d55e4e0a707cbdfe6c07f407c0b0ef49aff97712e086c323982078f8e92ee34c"
+    },
+    "tools/render-tyvor-timer.py": {
+      "bytes_sha256": "171dcacf008c7b44ca10b10708aa29781cfd3cd964013356d29277b2d34e622c",
+      "lf_sha256": "171dcacf008c7b44ca10b10708aa29781cfd3cd964013356d29277b2d34e622c"
+    },
+    "tools/render-tyvor-wordmark.py": {
+      "bytes_sha256": "1e1222598d433e1fb068071f39c0a2b7b9a5331f1a5b67fb2c433d4653bd5ae2",
+      "lf_sha256": "1e1222598d433e1fb068071f39c0a2b7b9a5331f1a5b67fb2c433d4653bd5ae2"
+    },
+    "tools/run-tyvor-simulator.sh": {
+      "bytes_sha256": "016fbc39efdf4c9fc4dc9b6e6c627b89b64dcecb14f2bfea747287a6ecfa10bc",
+      "lf_sha256": "016fbc39efdf4c9fc4dc9b6e6c627b89b64dcecb14f2bfea747287a6ecfa10bc"
+    },
+    "docs/branding/tyvor-mono-polish/.gitattributes": {
+      "bytes_sha256": "c7c6541111ee53947140bac154f1275c6b1b244c40c045b190662f23226509c9",
+      "lf_sha256": "c7c6541111ee53947140bac154f1275c6b1b244c40c045b190662f23226509c9"
+    }
+  }
+}

@@ -22,6 +22,7 @@
 #define LANGUAGE_PACKS_DEFINITION
 
 #include "edgetx.h"
+#include "tyvor_menu.h"
 #include "tasks/mixer_task.h"
 #include "hal/adc_driver.h"
 #include "hal/usb_driver.h"
@@ -237,7 +238,7 @@ void menuRadioSetup(event_t event)
      ALARMS_ROW(0),
      ALARMS_ROW(0),
      ALARMS_ROW(0),
-     ALARMS_ROW(0),
+     ALARMS_ROW(tyvorTrainerRow(0)), // visibility only; keep shutdown alarm policy
     // Backlight
     CASE_BACKLIGHT(LABEL(BACKLIGHT))
      CASE_BACKLIGHT(0)
@@ -284,7 +285,7 @@ void menuRadioSetup(event_t event)
     0,
      VIEWOPT_ROW(LABEL(RadioMenuTabs)),
       VIEWOPT_ROW(0),
-      VIEWOPT_ROW(0),
+      VIEWOPT_ROW(tyvorTrainerRow(0)),
      VIEWOPT_ROW(LABEL(ModelMenuTabs)),
       CASE_HELI(VIEWOPT_ROW(0))
       CASE_FLIGHT_MODES(VIEWOPT_ROW(0))

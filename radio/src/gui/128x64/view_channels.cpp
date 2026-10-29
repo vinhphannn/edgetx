@@ -27,6 +27,12 @@ constexpr coord_t CHANNEL_BAR_WIDTH = 70;
 
 static bool mixersView = false;
 
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX) && LCD_W == 128
+#define TYVOR_CHANNEL_MONITOR
+// Diagnostic banks are independent of the legacy saved HOME view.
+static uint8_t channelsPage = 0;
+#endif
+
 void menuChannelsViewCommon(event_t event)
 {
   uint8_t ch;
@@ -37,7 +43,11 @@ void menuChannelsViewCommon(event_t event)
       break;
   }
 
+#if defined(TYVOR_CHANNEL_MONITOR)
+  ch = 8 * channelsPage;
+#else
   ch = 8 * (g_eeGeneral.view / ALTERNATE_VIEW);
+#endif
 
   coord_t vx = CHANNEL_VALUE_OFFSET;
   coord_t bw = CHANNEL_BAR_WIDTH;
@@ -111,16 +121,33 @@ void menuChannelsViewCommon(event_t event)
 void menuChannelsView(event_t event)
 {
   switch (event) {
+#if defined(TYVOR_CHANNEL_MONITOR)
+    case EVT_ENTRY:
+      channelsPage = 0;
+      break;
+#endif
     case EVT_KEY_BREAK(KEY_EXIT):
       popMenu();
       break;
 
     case EVT_KEY_NEXT_PAGE:
+#if defined(TYVOR_CHANNEL_MONITOR)
+    case EVT_KEY_NEXT_VIEW:
+      channelsPage = (channelsPage + 1) % 4;
+#else
       g_eeGeneral.view = (g_eeGeneral.view + (4 * ALTERNATE_VIEW) + ALTERNATE_VIEW) % (4 * ALTERNATE_VIEW);
+#endif
       break;
 
     case EVT_KEY_PREVIOUS_PAGE:
+#if defined(TYVOR_CHANNEL_MONITOR)
+#if defined(EVT_KEY_PREVIOUS_VIEW)
+    case EVT_KEY_PREVIOUS_VIEW:
+#endif
+      channelsPage = (channelsPage + 3) % 4;
+#else
       g_eeGeneral.view = (g_eeGeneral.view + (4 * ALTERNATE_VIEW) - ALTERNATE_VIEW) % (4 * ALTERNATE_VIEW);
+#endif
       break;
   }
 

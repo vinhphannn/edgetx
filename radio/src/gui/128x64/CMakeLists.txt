@@ -16,6 +16,8 @@ set(GUI_SRC
   radio_setup.cpp
   radio_calibration.cpp
   view_main.cpp
+  tyvor_fc_arm.cpp
+  tyvor_flight_timer.cpp
   view_statistics.cpp
 )
 

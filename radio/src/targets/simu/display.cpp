@@ -22,6 +22,10 @@
 #include "display.h"
 #include "simu.h"
 
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+#include "edgetx.h"
+#endif
+
 static void _set_pixel(uint8_t* pixel, const SDL_Color& color)
 {
   pixel[0] = color.a;
@@ -53,18 +57,23 @@ static void _blit_simu_screen_color(void* screen_buffer, Uint32 format, int w, i
 
 static void _blit_simu_screen_1bit(void* screen_buffer, Uint32 format, int w, int h, int pitch)
 {
-  const SDL_Color on_color = {.r = 0, .g = 0, .b = 0};
-
   uint8_t* line_buffer = (uint8_t*)screen_buffer;
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      SDL_Color c = on_color;
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+      // Match SSD1309 A6/A7 at presentation only; never invert the framebuffer.
+      const bool on = simuLcdBuf[x + (y / 8) * w] & (1 << (y % 8));
+      const uint8_t level = (on != bool(g_eeGeneral.invertLCD)) ? 255 : 0;
+      const SDL_Color c = {level, level, level, SDL_ALPHA_OPAQUE};
+#else
+      SDL_Color c = {.r = 0, .g = 0, .b = 0};
       if (simuLcdBuf[x + (y / 8) * w] & (1 << (y % 8))) {
         c.a = SDL_ALPHA_OPAQUE;
       } else {
         c.a = SDL_ALPHA_TRANSPARENT;
       }
+#endif
       _set_pixel(line_buffer, c);
       line_buffer += SDL_BYTESPERPIXEL(format);
     }

@@ -42,9 +42,15 @@ void menuAboutView(event_t event)
       break;
   }
 
+#if defined(SAOLALINK_DEVEBOX)
+  lcdDrawText(LCD_W / 2, 4, "TYVOR", DBLSIZE | CENTERED);
+  lcdDrawText(ABOUT_INDENT, 26, ABOUT_VERSION_1, SMLSIZE);
+  lcdDrawText(ABOUT_INDENT, 46, ABOUT_VERSION_2, SMLSIZE);
+  lcdDrawText(ABOUT_INDENT, 54, ABOUT_VERSION_3, SMLSIZE);
+#else
   lcdDrawText(1, 0, STR_ABOUTUS, DBLSIZE|INVERS);
-
   lcdDrawText(ABOUT_INDENT, 22, ABOUT_VERSION_1, SMLSIZE);
   lcdDrawText(ABOUT_INDENT, 38, ABOUT_VERSION_2, SMLSIZE);
   lcdDrawText(ABOUT_INDENT, 46, ABOUT_VERSION_3, SMLSIZE);
+#endif
 }

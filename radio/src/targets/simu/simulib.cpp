@@ -46,6 +46,7 @@
 #endif
 
 #include <assert.h>
+#include "desktop_controls.h"
 #include <clocale>
 #include <deque>
 #include <stdint.h>
@@ -363,9 +364,30 @@ void boardInit()
   switchInit();
 }
 
-uint32_t pwrCheck() { return simu_shutdown ? e_power_off : e_power_on; }
+uint32_t pwrCheck()
+{
+  if (simu_shutdown) return e_power_off;
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  auto state = desktopPower.poll(get_tmr10ms());
+  if (state == DesktopPowerHold::Off) {
+    simu_shutdown = true;
+    return e_power_off;
+  }
+  if (state == DesktopPowerHold::Press) {
+    drawShutdownAnimation(desktopPower.progress.load(), DesktopPowerHold::holdTicks, nullptr);
+    return e_power_press;
+  }
+#endif
+  return e_power_on;
+}
 
-bool pwrPressed() { return false; }
+bool pwrPressed()
+{
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  if (desktopPower.enabled.load()) return desktopPower.pressed.load();
+#endif
+  return false;
+}
 bool pwrOffPressed()
 {
 #if defined(PWR_BUTTON_PRESS)
@@ -457,6 +479,9 @@ void serialPutc(char c) { }
 
 void boardOff()
 {
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  if (desktopPower.enabled.load()) desktopPower.boardOff.store(true);
+#endif
 }
 
 #if defined(HAS_HARDWARE_OPTIONS)

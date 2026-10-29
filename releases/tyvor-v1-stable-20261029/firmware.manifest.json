@@ -1,0 +1,16 @@
+{
+  "profile": "saolalink-devebox",
+  "pcbrev": "SAOLALINK_V1",
+  "mode": "Debug",
+  "kind": "firmware",
+  "sha256": "a5c828f886c1fbeaf8b2b9fbc69d301beecee593cfae43434d7235a9f6b989fd",
+  "size": 512504,
+  "address": "0x08000000",
+  "lto": true,
+  "bootloader_included": true,
+  "commit": "de56c3127e0f288041759675149cb712f3f2a196",
+  "working_changes_sha256": "cb71d05162d0288b3053a84aa66b84b576522be22d52d2e17fd46c45c29890d4",
+  "built_at": "2026-10-29T06:53:08.151351+00:00",
+  "hse_hz": 8000000,
+  "devebox_usb": true
+}

@@ -20,23 +20,62 @@
  */
 
 #include "edgetx.h"
+#include "gui/128x64/tyvor_power.h"
 #include "inactivity_timer.h"
 #include "os/sleep.h"
 
 static bool splashStarted = false;
+#if defined(TYVOR_POWER_UI)
+static bool tyvorStartupReady = false;
+static tmr10ms_t tyvorStartupStart;
+static tmr10ms_t tyvorStartupElapsed = 0;
+
+bool drawTyvorStartup(bool interrupted)
+{
+  // A cancelled power-button hold must start its next animation at a full ring again.
+  resetTyvorShutdown();
+  if (!splashStarted || !tyvorStartupReady)
+    return false;
+  // Monotonic, single-shot presentation even if the caller repeats a frame.
+  tmr10ms_t elapsed = get_tmr10ms() - tyvorStartupStart;
+  elapsed = tyvorStartupElapsed = max(elapsed, tyvorStartupElapsed);
+  if (interrupted || elapsed >= 270) {
+    splashStarted = tyvorStartupReady = false;
+    return false;
+  }
+  if (elapsed < 120)
+    drawTyvorPowerFrame(elapsed, 120, false);
+  else
+    drawTyvorSplashFrame();  // Original owl for 150 ticks, then idle HOME.
+  return true;
+}
+#endif
 
 void startSplash()
 {
   splashStarted = true;
+#if defined(TYVOR_POWER_UI)
+  tyvorStartupReady = false;
+#endif
 }
 
 void cancelSplash()
 {
   splashStarted = false;
+#if defined(TYVOR_POWER_UI)
+  tyvorStartupReady = false;
+#endif
 }
 
 void waitSplash()
 {
+#if defined(TYVOR_POWER_UI)
+  // Arm a UI overlay instead of waiting here. Startup checks, calibration,
+  // mixer initialisation and watchdog setup retain their normal execution order.
+  tyvorStartupReady = splashStarted && SPLASH_NEEDED();
+  tyvorStartupStart = get_tmr10ms();
+  tyvorStartupElapsed = 0;
+#else
   // Handle B&W splash screen
 
 #if defined(PWR_BUTTON_PRESS)
@@ -82,4 +121,5 @@ void waitSplash()
       checkBacklight();
     }
   }
+#endif
 }

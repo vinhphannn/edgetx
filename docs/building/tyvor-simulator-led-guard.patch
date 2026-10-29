@@ -1,0 +1,12 @@
+diff --git a/radio/src/main.cpp b/radio/src/main.cpp
+--- a/radio/src/main.cpp
++++ b/radio/src/main.cpp
+@@ -573,7 +573,7 @@ __attribute__((weak)) void customUIActions() {}
+ 
+ void perMain()
+ {
+-#if defined(SAOLALINK_DEVEBOX)
++#if defined(SAOLALINK_DEVEBOX) && !defined(SIMU)
+   static tmr10ms_t last_led = 0;
+   if (get_tmr10ms() - last_led >= 50) {
+     last_led = get_tmr10ms();

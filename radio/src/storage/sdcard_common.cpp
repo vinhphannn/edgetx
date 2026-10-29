@@ -20,6 +20,8 @@
  */
 
 #include "edgetx.h"
+#include "gui/128x64/tyvor_flight_timer.h"
+#include "gui/128x64/tyvor_fc_arm.h"
 #include "storage.h"
 #include "sdcard_common.h"
 #include "modelslist.h"
@@ -194,6 +196,12 @@ const char* loadModel(const char* filename, bool alarms, const char* filePath)
   }
 
   postModelLoad(error ? false : alarms);
+#if defined(TYVOR_FLIGHT_TIMER_UI)
+  tyvorFlightTimerModelLoaded(error == nullptr);
+#endif
+#if defined(TYVOR_FC_ARM_UI)
+  tyvorFcArmModelLoaded(error == nullptr);
+#endif
   return error;
 }
 

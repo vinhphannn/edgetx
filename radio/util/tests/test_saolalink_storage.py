@@ -45,6 +45,7 @@ class DeveboxStorageTests(unittest.TestCase):
             '#if defined(SAOLALINK_DEVEBOX)', 1)[1].split('#endif', 1)[0]
         body = r'''
 #include <cassert>
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
@@ -54,6 +55,7 @@ class DeveboxStorageTests(unittest.TestCase):
 #include <string>
 #include <vector>
 #define SAOLALINK_DEVEBOX
+#define TYVOR_POWER_UI
 #define GUI
 #define LCD_W 128
 #define OPENTX_START_NO_SPLASH 1
@@ -65,7 +67,7 @@ class DeveboxStorageTests(unittest.TestCase):
 #define RAISE_ALERT(...) (++warnings)
 #define BACKLIGHT_ENABLE() ((void)0)
 #define AUDIO_BYE() ((void)0)
-#define AUDIO_HELLO() ((void)0)
+#define AUDIO_HELLO() (++helloCalls)
 #define PLAY_MODEL_NAME() ((void)0)
 #define IS_PLAYING(x) false
 #define LED_ERROR_END() ((void)0)
@@ -94,6 +96,7 @@ class DeveboxStorageTests(unittest.TestCase):
 #define STR_NO_SDCARD "No SD card"
 #define TIME_TO_WRITE() (storageDirtyMsk && uint32_t(get_tmr10ms()-storageDirtyTime10ms)>=500)
 using tmr10ms_t=uint32_t;
+using std::min;
 enum {USB_UNSELECTED_MODE, USB_SERIAL_MODE, USB_JOYSTICK_MODE, USB_MASS_STORAGE_MODE};
 enum {e_backlight_mode_off};
 struct CalibData {int16_t mid,spanNeg,spanPos;};
@@ -117,6 +120,10 @@ uint8_t storageDirtyMsk=0,startOptions=0;
 uint32_t storageDirtyTime10ms=0,ms=0,sessionTimer=0;
 bool emergency=false,mounted=false,cardPresent=true,writeFailure=false,suspendI2CTasks=false;
 unsigned defaultsCalls=0,modelDefaultsCalls=0,calibPrompts=0,warnings=0;
+unsigned splashStarts=0,splashWaits=0,helloCalls=0,startupChecks=0;
+unsigned shutdownFrames=0,earlyStartingFrames=0;
+bool SPLASH_NEEDED() {return true;}
+void drawStartupAnimation(uint32_t duration,uint32_t total) {assert(duration==0&&total==120);++earlyStartingFrames;}
 int selectedUsb=USB_SERIAL_MODE;
 int currentBacklightBright,requiredBacklightBright,currentLanguagePackIdx,currentLanguagePack;
 int languagePacks[]={0};
@@ -185,6 +192,9 @@ void pulsesStart() {}
 void logsClose() {events.emplace_back("close logs");}
 void logsInit() {events.emplace_back("init logs");}
 void sleep_ms(unsigned delay) {ms+=delay;}
+void drawShutdownAnimation(uint32_t elapsed,uint32_t total,const char*) {
+ assert(elapsed<100&&total==100);++shutdownFrames;
+}
 void lcdRefreshWait() {}
 void lcdClear() {}
 void lcdRefresh() {}
@@ -194,12 +204,12 @@ void menuMainView() {}
 void menuModelSelect() {}
 void menuFirstCalib() {}
 void (*menuHandlers[2])();
-void startSplash() {}
-void waitSplash() {}
+void startSplash() {++splashStarts;}
+void waitSplash() {++splashWaits;}
 void cancelSplash() {}
 void chainMenu(void (*)()) {++calibPrompts;}
-void checkAlarm() {}
-void checkAll(bool) {}
+void checkAlarm() {++startupChecks;}
+void checkAll(bool) {++startupChecks;}
 void resetBacklightTimeout() {}
 void pwrOn() {}
 void runFatalErrorScreen(const char*) {throw std::runtime_error("missing SD");}
@@ -226,15 +236,18 @@ struct {void start() {}} audioQueue;
                  function(storage, 'void storageFlushCurrentModel()'),
                  function(app, 'void edgeTxInit()'), function(app, 'void edgeTxClose(uint8_t shutdown)')]
         body += '\n'.join(parts) + r'''
-void coldBoot() {
+void coldBoot(uint8_t options=0) {
  memset(&g_eeGeneral,0,sizeof(g_eeGeneral));memset(&g_model,0,sizeof(g_model));
- storageDirtyMsk=0;startOptions=0;mounted=false;suspendI2CTasks=false;events.clear();
+ storageDirtyMsk=0;startOptions=options;mounted=false;suspendI2CTasks=false;events.clear();
  edgeTxInit();
 }
 int main() {
  // Blank card follows the normal first-run/default/calibration path once.
  coldBoot();
  assert(defaultsCalls==1&&modelDefaultsCalls==1&&calibPrompts==1);
+ assert(splashStarts==1&&splashWaits==0&&helloCalls==0);
+ assert(!(startOptions&OPENTX_START_NO_SPLASH));
+ assert(startOptions&OPENTX_START_NO_CHECKS);
  assert(g_eeGeneral.USBMode==USB_SERIAL_MODE&&g_eeGeneral.serialMode==UART_MODE_CLI);
  assert(g_eeGeneral.internalModuleBaudrate==CROSSFIRE_INDEX_TO_STORE(1));
  assert(g_model.moduleData[0].type==MODULE_TYPE_CROSSFIRE);
@@ -249,6 +262,7 @@ int main() {
  const Radio calibrated=g_eeGeneral;
  coldBoot();
  assert(defaultsCalls==1&&modelDefaultsCalls==1&&calibPrompts==1);
+ assert(splashStarts==2&&splashWaits==1&&helloCalls==0&&startupChecks==0);
  assert(g_eeGeneral.stickMode==3&&g_eeGeneral.chkSum==evalChkSum());
  assert(!memcmp(calibrated.calib,g_eeGeneral.calib,sizeof(calibrated.calib)));
  // Saved user choices must not be replaced by development defaults on restart.
@@ -256,7 +270,9 @@ int main() {
  g_eeGeneral.internalModuleBaudrate=4;g_model.gain=73;
  g_model.moduleData[0].type=MODULE_TYPE_NONE;
  storageDirty(EE_GENERAL|EE_MODEL);sessionTimer=12;
+ const auto closeStart=ms;
  edgeTxClose(1);assert(!mounted&&sessionTimer==0&&storageDirtyMsk==0);
+ assert(ms-closeStart==100&&shutdownFrames==10); // no extra cosmetic hold
  assert(events.back()=="unmount");
  coldBoot();
  assert(defaultsCalls==1&&modelDefaultsCalls==1&&calibPrompts==1);
@@ -269,6 +285,13 @@ int main() {
  storageCheck(true);assert(storageDirtyMsk&EE_GENERAL);
  writeFailure=false;storageCheck(true);assert(storageDirtyMsk==0);
  coldBoot();assert(g_eeGeneral.stickMode==0);
+ // Mass-storage close retains its timing and must never display shutdown UI.
+ const auto usbCloseStart=ms, frames=shutdownFrames;
+ edgeTxClose(0);assert(ms-usbCloseStart==100&&shutdownFrames==frames);
+ // Explicit no-splash callers (including the simulator) stay quiet and hidden.
+ const auto starts=splashStarts, waits=splashWaits, previews=earlyStartingFrames;
+ coldBoot(OPENTX_START_NO_SPLASH);
+ assert(splashStarts==starts&&splashWaits==waits&&earlyStartingFrames==previews&&helloCalls==0&&startupChecks==0);
  // A missing card follows the existing fatal-screen path, never resets SD settings.
  cardPresent=false;const auto calls=defaultsCalls;
  try {coldBoot();assert(false);} catch(const std::runtime_error&) {}

@@ -33,6 +33,15 @@
 #include <filesystem>
 #include <regex>
 #include <string>
+#include <future>
+#include <vector>
+#include "input_mapping.h"
+#include "desktop_controls.h"
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "hal/adc_driver.h"
 #include "hal/rotary_encoder.h"
@@ -86,6 +95,56 @@ static SDL_Texture* screen_frame_buffer;
 
 static GimbalState stick_left = {{0.5f, 0.5f}, false};
 static GimbalState stick_right = {{0.5f, 0.5f}, false};
+
+#if defined(TYVOR_DESKTOP_CONTROLS)
+static std::future<void> powerStop;
+static bool desktopOff = false;
+static bool desktopRestart = false;
+static std::string desktopExecutable;
+static unsigned desktopInputMode = 0;
+static bool desktopInputsReady = false;
+
+static void updateDesktopPower()
+{
+  if (simuInitDone && !desktopInputsReady) {
+    // A rejected settings file may have caused the firmware to load defaults.
+    if (desktopInputMode != unsigned(g_eeGeneral.stickMode)) {
+      stick_left.pos = stick_right.pos = ImVec2(0.5f, 0.5f);
+      (desktopThrottleOnLeft(g_eeGeneral.stickMode) ? stick_left : stick_right).pos.y = 1.0f;
+    }
+    desktopInputsReady = true;
+  }
+  if (simuInitDone) desktopInputMode = unsigned(g_eeGeneral.stickMode);
+  // boardOff is reached only after the firmware has closed/flushed storage.
+  if (desktopPower.boardOff.load() && !desktopOff && !powerStop.valid()) {
+    desktopPower.pressed.store(false);
+    powerStop = std::async(std::launch::async, []() { simuStop(); });
+  }
+  if (powerStop.valid() && powerStop.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+    powerStop.get();
+    desktopOff = true;
+    std::cout << "[TYVOR] POWER_OFF_COMPLETE (firmware boardOff, tasks joined)" << std::endl;
+  }
+}
+
+static void drawDesktopPower()
+{
+  bool stopping = desktopPower.boardOff.load() && !desktopOff;
+  ImGui::BeginDisabled(stopping || (!desktopOff && !simuInitDone));
+  const char* label = desktopOff ? "Power ON" : "Power OFF - hold 2s";
+  bool clicked = ImGui::Button(label, ImVec2(224, 38));
+  bool pressed = !desktopOff && ImGui::IsItemActive() && ImGui::IsMouseDown(0);
+  desktopPower.pressed.store(pressed);
+  if (desktopOff && clicked) desktopRestart = true;
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  if (desktopOff) ImGui::TextUnformatted("OFF - saved settings retained");
+  else if (stopping) ImGui::TextUnformatted("Finishing shutdown...");
+  else if (!simuInitDone) ImGui::TextUnformatted("Starting firmware...");
+  else if (pressed) ImGui::ProgressBar(desktopPower.progress.load() / 200.0f, ImVec2(220, 0), "Hold to switch off");
+  else ImGui::Text("ON - Mode %u", unsigned(g_eeGeneral.stickMode) + 1);
+}
+#endif
 
 #if !defined(__EMSCRIPTEN__)
 static const unsigned char _icon_png[] = {
@@ -216,6 +275,10 @@ static bool handleKeyEvents(SDL_Event& event)
       break;
 
     case SDLK_r:
+#if defined(TYVOR_DESKTOP_CONTROLS)
+      // Power ON uses a clean process image, not a warm restart with old globals.
+      if (desktopPower.enabled.load()) break;
+#endif
       if (event.type == SDL_KEYUP) {
         simuStop();
         simuStart();
@@ -241,6 +304,9 @@ static void redraw();
 
 static bool handleEvents()
 {
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  updateDesktopPower();
+#endif
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
 
@@ -259,6 +325,9 @@ static bool handleEvents()
   }
 
   redraw();
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  if (desktopRestart) return false;
+#endif
   return true;
 }
 
@@ -449,10 +518,29 @@ static float gimbals_width()
 
 static void draw_gimbals()
 {
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  unsigned mode = simuInitDone ? unsigned(g_eeGeneral.stickMode) : desktopInputMode;
+  stick_left.lock_y = desktopThrottleOnLeft(mode);
+  stick_right.lock_y = !stick_left.lock_y;
+#else
   stick_left.lock_y = (g_eeGeneral.stickMode == 1);
   stick_right.lock_y = (g_eeGeneral.stickMode == 0);
+#endif
 
   GimbalPair("#gimbals", stick_left, stick_right);
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  const char* role[] = {"Rud", "Ele", "Thr", "Ail"};
+  ImGui::Text("Left: %s / %s   Right: %s / %s",
+              role[inputMappingConvertMode(mode, 0)], role[inputMappingConvertMode(mode, 1)],
+              role[inputMappingConvertMode(mode, 3)], role[inputMappingConvertMode(mode, 2)]);
+  uint16_t lh, lv, rv, rh;
+  desktopMainAxis("LH", stick_left.pos.x, stick_left.pos.y, stick_right.pos.x, stick_right.pos.y, lh);
+  desktopMainAxis("LV", stick_left.pos.x, stick_left.pos.y, stick_right.pos.x, stick_right.pos.y, lv);
+  desktopMainAxis("RV", stick_left.pos.x, stick_left.pos.y, stick_right.pos.x, stick_right.pos.y, rv);
+  desktopMainAxis("RH", stick_left.pos.x, stick_left.pos.y, stick_right.pos.x, stick_right.pos.y, rh);
+  ImGui::Text("LH X:%4u  LV Y:%4u", lh, lv);
+  ImGui::Text("RH X:%4u  RV Y:%4u", rh, rv);
+#endif
 }
 
 static float pots_width()
@@ -531,6 +619,10 @@ void draw_controls()
 
 ImU32 get_bg_color()
 {
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+  // This target has an emissive mono OLED, not a tinted LCD backlight.
+  return IM_COL32(0, 0, 0, 255);
+#endif
   if (LCD_DEPTH < 16) {
     if (isBacklightEnabled()) {
       return IM_COL32(47, 123, 227, 255);
@@ -562,11 +654,18 @@ static void draw_screen()
   const ScreenDesc desc = {
     .width = LCD_W,
     .height = LCD_H,
+#if defined(RADIO_SAOLALINKV1) && defined(SAOLALINK_DEVEBOX)
+    .is_dot_matrix = false, // Keep OLED pixels strictly black or white.
+#else
     .is_dot_matrix = LCD_DEPTH == 1 || LCD_DEPTH == 4,
+#endif
   };
 
   auto size = calc_screen_size();
   SimuScreen(desc, (ImTextureID)screen_frame_buffer, size, get_bg_color(),
+#if defined(TYVOR_DESKTOP_CONTROLS)
+             desktopOff ? IM_COL32(0,0,0,255) :
+#endif
              (LCD_DEPTH == 16 && !isBacklightEnabled()) ?
              IM_COL32(0,0,0,127) : IM_COL32_BLACK_TRANS);
 
@@ -615,7 +714,14 @@ static void redraw()
   bool show_win = true;
 
   if (ImGui::Begin("Main window", &show_win, flags)) {
+#if defined(TYVOR_DESKTOP_CONTROLS)
+    drawDesktopPower();
+    ImGui::BeginDisabled(desktopOff || desktopPower.boardOff.load() || !simuInitDone);
+#endif
     draw_controls();
+#if defined(TYVOR_DESKTOP_CONTROLS)
+    ImGui::EndDisabled();
+#endif
     draw_screen();
   }
   ImGui::End();
@@ -660,10 +766,9 @@ int default_input_mode()
 #endif
 }
 
-int find_input_mode()
+int find_input_mode(const std::string& settings_path)
 {
-  // TODO: add support for path from command line
-  std::ifstream file("./RADIO/radio.yml");
+  std::ifstream file(std::filesystem::path(settings_path) / "RADIO/radio.yml");
   if (!file) return default_input_mode();
 
   std::regex re("^stickMode:\\s*(\\d+)");
@@ -672,7 +777,13 @@ int find_input_mode()
   while (std::getline(file, line)) {
     std::smatch matches;
       if (std::regex_search(line, matches, re) && matches.size() > 1) {
-        return std::stoi(matches[1].str());
+        try {
+          int mode = std::stoi(matches[1].str());
+          if (mode >= 0 && mode < 4) return mode;
+        } catch (const std::exception&) {
+          // Let firmware settings validation handle corrupt input normally.
+        }
+        return default_input_mode();
       }
   }
 
@@ -718,7 +829,13 @@ int main(int argc, char* argv[])
 
   // Create window with SDL_Renderer graphics context
   int window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-  window = SDL_CreateWindow("EdgeTx Simu", SDL_WINDOWPOS_CENTERED,
+  window = SDL_CreateWindow(
+#if defined(TYVOR_DESKTOP_CONTROLS)
+                            "TYVOR DevEBox Simulator",
+#else
+                            "EdgeTx Simu",
+#endif
+                            SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED, window_width, window_height,
                             window_flags);
 
@@ -765,7 +882,10 @@ int main(int argc, char* argv[])
   SDL_SetTextureBlendMode(screen_frame_buffer, SDL_BLENDMODE_BLEND);
 
   // Init gimbal safe position
-  int input_mode = find_input_mode();
+  int input_mode = find_input_mode(args.getSettingsPath());
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  desktopInputMode = unsigned(input_mode);
+#endif
   switch (input_mode) {
     case 0:
     case 2:
@@ -785,6 +905,12 @@ int main(int argc, char* argv[])
   simuFatfsSetPaths(args.getStoragePath().c_str(),
                     args.getSettingsPath().c_str());
   simuStart();
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  desktopPower.enabled.store(true);
+  char* executable_dir = SDL_GetBasePath();
+  desktopExecutable = (std::filesystem::path(executable_dir ? executable_dir : ".") / progname).string();
+  SDL_free(executable_dir);
+#endif
 
   // Main loop
   SDL_SetEventFilter([](void*, SDL_Event* event){
@@ -814,6 +940,9 @@ int main(int argc, char* argv[])
 #endif
 
   // App cleanup
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  if (powerStop.valid()) powerStop.get();
+#endif
   simuStop();
 
   // Cleanup
@@ -829,6 +958,23 @@ int main(int argc, char* argv[])
 #endif
   SDL_CloseAudio();
   SDL_Quit();
+
+#if defined(TYVOR_DESKTOP_CONTROLS)
+  if (desktopRestart) {
+    // The native core owns process-wide radio/audio/Lua globals. Re-exec after
+    // clean power-off gives each ON a real cold lifecycle with the same paths.
+    std::cout << "[TYVOR] COLD_POWER_ON" << std::endl;
+#if defined(_WIN32)
+    std::vector<const char*> restart_args(argv, argv + argc);
+    restart_args.push_back(nullptr);
+    _execv(desktopExecutable.c_str(), restart_args.data());
+#else
+    execv(desktopExecutable.c_str(), argv);
+#endif
+    std::cerr << "Could not restart simulator: " << desktopExecutable << std::endl;
+    return 2;
+  }
+#endif
   
   return 0;
 }
@@ -837,6 +983,12 @@ uint16_t simuGetAnalog(uint8_t idx)
 {
   auto max_sticks = adcGetMaxInputs(ADC_INPUT_MAIN);
   if (idx < max_sticks) {
+#if defined(TYVOR_DESKTOP_CONTROLS)
+    uint16_t value;
+    if (desktopMainAxis(adcGetInputName(ADC_INPUT_MAIN, idx),
+                        stick_left.pos.x, stick_left.pos.y,
+                        stick_right.pos.x, stick_right.pos.y, value)) return value;
+#endif
     switch(idx) {
     case 0: return stick_left.pos.x * 4096;
     case 1: return (1.0 - stick_left.pos.y) * 4096;

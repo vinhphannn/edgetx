@@ -26,6 +26,8 @@
 #include "hal/audio_driver.h"
 
 #include "edgetx.h"
+#include "gui/128x64/tyvor_power.h"
+#include "gui/128x64/tyvor_flight_timer.h"
 #if defined(SAOLALINK_DEVEBOX) && !defined(HAPTIC)
 // The STM32 timer calls this hook even when the bare board has no haptic motor.
 void per5ms() {}
@@ -499,6 +501,9 @@ bool handleGui(event_t event)
 void guiMain(event_t evt)
 {
   bool refreshNeeded = menuEvent || warningText || (popupMenuItemsCount > 0);
+#if defined(TYVOR_POWER_UI)
+  const bool tyvorInput = evt != 0 && evt != EVT_ENTRY;
+#endif
 #if defined(LUA)
   // TODO better lua stopwatch
   uint32_t t0 = get_tmr10ms();
@@ -562,6 +567,17 @@ void guiMain(event_t evt)
     }
   }
 
+#if defined(TYVOR_POWER_UI)
+  // Normal UI work and safety popups run first. Draw only over an idle HOME;
+  // use its one refresh, so HOME cannot flash between animation frames.
+  bool interrupted = tyvorInput || warningText || popupMenuItemsCount ||
+                     menuLevel != 0 || menuHandlers[0] != menuMainView ||
+                     UNEXPECTED_SHUTDOWN();
+#if defined(LUA)
+  interrupted |= scriptInternalData[0].reference == SCRIPT_STANDALONE;
+#endif
+  refreshNeeded |= drawTyvorStartup(interrupted);
+#endif
   if (refreshNeeded) lcdRefresh();
 }
 #endif
@@ -573,7 +589,7 @@ __attribute__((weak)) void customUIActions() {}
 
 void perMain()
 {
-#if defined(SAOLALINK_DEVEBOX)
+#if defined(SAOLALINK_DEVEBOX) && !defined(SIMU)
   static tmr10ms_t last_led = 0;
   if (get_tmr10ms() - last_led >= 50) {
     last_led = get_tmr10ms();
@@ -598,6 +614,9 @@ void perMain()
 
   checkTrainerSettings();
   periodicTick();
+#if defined(TYVOR_FLIGHT_TIMER_UI)
+  tyvorFlightTimerPoll();
+#endif
   DEBUG_TIMER_STOP(debugTimerPerMain1);
 
   checkBacklight();

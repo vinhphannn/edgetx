@@ -20,6 +20,7 @@
  */
 
 #include "edgetx.h"
+#include "gui/128x64/tyvor_menu.h"
 
 const MenuHandler menuTabGeneral[MENU_RADIO_PAGES_COUNT] = {
 #if defined(RADIO_TOOLS)
@@ -28,7 +29,7 @@ const MenuHandler menuTabGeneral[MENU_RADIO_PAGES_COUNT] = {
   { menuRadioSdManager, nullptr },
   { menuRadioSetup, nullptr },
   { menuRadioSpecialFunctions, radioGFEnabled },
-  { menuRadioTrainer, radioTrainerEnabled },
+  { menuRadioTrainer, tyvorTrainerPageEnabled },
   { menuRadioHardware, nullptr },
   { menuRadioVersion, nullptr }
 };
