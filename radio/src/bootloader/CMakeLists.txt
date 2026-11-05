@@ -52,6 +52,7 @@ if(NOT NO_LTO)
 endif()
 
 add_executable(bootloader EXCLUDE_FROM_ALL ${BOOTLOADER_SRC})
+set_property(TARGET bootloader APPEND PROPERTY LINK_DEPENDS ${LINKER_DEPENDENCIES})
 add_dependencies(bootloader ${BITMAPS_TARGET})
 
 target_compile_definitions(stm32_drivers_w_dbg_bl PUBLIC BOOT)

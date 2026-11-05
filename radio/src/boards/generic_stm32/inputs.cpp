@@ -26,7 +26,11 @@
 
 #include "stm32_keys.inc"
 #if defined(SAOLALINK_DEVEBOX)
+#if defined(SAOLALINK_DEVEBOX_V2)
+#include "targets/taranis/devebox_v2/devebox_keys.h"
+#else
 #include "targets/taranis/saolalink_v1/devebox_keys.h"
+#endif
 #endif
 
 #define __weak __attribute__((weak))

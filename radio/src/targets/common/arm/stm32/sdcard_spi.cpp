@@ -32,7 +32,7 @@
 
 #include <string.h>
 
-#define SD_SPI_CLK_400K (400000UL)
+#define SD_SPI_CLK_INIT (400000UL)
 
 #if !defined(SD_SPI_CLK_MAX)
 #define SD_SPI_CLK_MAX (25000000UL)
@@ -79,6 +79,56 @@ typedef enum {
 } sd_init_fsm_state_t;
 
 static sdcard_spi_t _sdcard_spi = {nullptr, false};
+
+#if defined(SAOLALINK_DEVEBOX_V2)
+static sd_init_fsm_state_t _sd_init_stage = SD_INIT_START;
+static uint8_t _sd_last_command = 0xFF;
+static uint8_t _sd_last_response = 0xFF;
+static sd_rw_response_t _sd_init_data_result = SD_RW_OK;
+static uint8_t _sd_cid[SD_SIZE_OF_CID_AND_CSD_REG];
+static bool _sd_cid_received = false;
+static uint8_t _sd_cid_crc = 0;
+
+const char* sdcard_spi_init_stage()
+{
+  switch (_sd_init_stage) {
+    case SD_INIT_START: return "SPI setup";
+    case SD_INIT_SPI_POWER_SEQ: return "power sequence";
+    case SD_INIT_SEND_CMD0: return "CMD0";
+    case SD_INIT_SEND_CMD8: return "CMD8";
+    case SD_INIT_SEND_ACMD41_HCS: return "ACMD41 HCS";
+    case SD_INIT_SEND_ACMD41: return "ACMD41";
+    case SD_INIT_SEND_CMD1: return "CMD1";
+    case SD_INIT_SEND_CMD58: return "CMD58";
+    case SD_INIT_SEND_CMD16: return "CMD16";
+    case SD_INIT_ENABLE_CRC: return "CRC setup";
+    case SD_INIT_READ_CID: return "CID";
+    case SD_INIT_READ_CSD: return "CSD";
+    case SD_INIT_SET_MAX_SPI_SPEED: return "ready";
+    default: return "unknown";
+  }
+}
+
+uint8_t sdcard_spi_last_command() { return _sd_last_command; }
+uint8_t sdcard_spi_last_response() { return _sd_last_response; }
+const uint8_t* sdcard_spi_cid_bytes()
+{
+  return _sd_cid_received ? _sd_cid : nullptr;
+}
+uint8_t sdcard_spi_cid_expected_crc() { return _sd_cid_crc; }
+const char* sdcard_spi_init_data_result()
+{
+  switch (_sd_init_data_result) {
+    case SD_RW_OK: return "OK";
+    case SD_RW_NO_TOKEN: return "no data token";
+    case SD_RW_TIMEOUT: return "busy timeout";
+    case SD_RW_RX_TX_ERROR: return "transfer error";
+    case SD_RW_CRC_MISMATCH: return "CRC mismatch";
+    case SD_RW_NOT_SUPPORTED: return "unsupported register";
+    default: return "error";
+  }
+}
+#endif
 
 static inline void _send_dummy_byte(const stm32_spi_t* spi)
 {
@@ -220,6 +270,10 @@ static uint8_t sdcard_spi_send_cmd(const stm32_spi_t* spi, uint8_t sd_cmd_idx,
 
   } while (timersGetUsTick() - timeout < retry_us);
 
+#if defined(SAOLALINK_DEVEBOX_V2)
+  _sd_last_command = sd_cmd_idx;
+  _sd_last_response = r1_resu;
+#endif
   return r1_resu;
 }
 
@@ -258,12 +312,13 @@ static sd_init_fsm_state_t _init_sd_fsm_step(const stm32_spi_t* spi,
                                              sd_init_fsm_state_t state)
 {
   switch (state) {
-  case SD_INIT_START:
+  case SD_INIT_START: {
     TRACE("SD_INIT_START");
     stm32_spi_init(spi, LL_SPI_DATAWIDTH_8BIT);
-    stm32_spi_set_max_baudrate(spi, SD_SPI_CLK_400K);
+    stm32_spi_set_max_baudrate(spi, SD_SPI_CLK_INIT);
     _set_miso_pullup(spi->MISO);
     return SD_INIT_SPI_POWER_SEQ;
+  }
 
   case SD_INIT_SPI_POWER_SEQ:
     TRACE("SD_INIT_SPI_POWER_SEQ");
@@ -477,18 +532,27 @@ static sd_init_fsm_state_t _init_sd_fsm_step(const stm32_spi_t* spi,
     // unreachable
     break;
 
-  case SD_INIT_READ_CID:
+  case SD_INIT_READ_CID: {
     TRACE("SD_INIT_READ_CID");
-    if (_read_cid(spi, card) == SD_RW_OK) {
+    auto result = _read_cid(spi, card);
+#if defined(SAOLALINK_DEVEBOX_V2)
+    _sd_init_data_result = result;
+#endif
+    if (result == SD_RW_OK) {
       return SD_INIT_READ_CSD;
     } else {
       TRACE("reading cid register failed!");
       return SD_INIT_CARD_UNKNOWN;
     }
+  }
 
-  case SD_INIT_READ_CSD:
+  case SD_INIT_READ_CSD: {
     TRACE("SD_INIT_READ_CSD");
-    if (_read_csd(spi, card) == SD_RW_OK) {
+    auto result = _read_csd(spi, card);
+#if defined(SAOLALINK_DEVEBOX_V2)
+    _sd_init_data_result = result;
+#endif
+    if (result == SD_RW_OK) {
       if (card->csd_structure == SD_CSD_V1) {
         TRACE("csd_structure is version 1");
       } else if (card->csd_structure == SD_CSD_V2) {
@@ -499,6 +563,7 @@ static sd_init_fsm_state_t _init_sd_fsm_step(const stm32_spi_t* spi,
       TRACE("reading csd register failed!");
       return SD_INIT_CARD_UNKNOWN;
     }
+  }
 
   case SD_INIT_SET_MAX_SPI_SPEED:
     TRACE("SD_INIT_SET_MAX_SPI_SPEED");
@@ -516,7 +581,18 @@ int sdcard_spi_init(const stm32_spi_t* spi, sdcard_info_t* card)
 {
   sd_init_fsm_state_t state = SD_INIT_START;
 
+#if defined(SAOLALINK_DEVEBOX_V2)
+  _sd_last_command = 0xFF;
+  _sd_last_response = 0xFF;
+  _sd_init_data_result = SD_RW_OK;
+  _sd_cid_received = false;
+#endif
+
   do {
+#if defined(SAOLALINK_DEVEBOX_V2)
+    // Preserve the failing step instead of replacing it with CARD_UNKNOWN.
+    if (state != SD_INIT_CARD_UNKNOWN) _sd_init_stage = state;
+#endif
     state = _init_sd_fsm_step(spi, card, state);
   } while (state != SD_INIT_FINISH);
 
@@ -754,9 +830,13 @@ static sd_rw_response_t _read_cid(const stm32_spi_t* spi, sdcard_info_t* card)
   int nbl = _read_blocks(&card_spi, SD_CMD_10, 0, cid_raw_data, SD_SIZE_OF_CID_AND_CSD_REG,
                          SD_BLOCKS_FOR_REG_READ, &state);
 
-  uint8_t crc7 = _crc_7(&(cid_raw_data[0]), SD_SIZE_OF_CID_AND_CSD_REG - 1);
-
   if (nbl == SD_BLOCKS_FOR_REG_READ) {
+    uint8_t crc7 = _crc_7(cid_raw_data, SD_SIZE_OF_CID_AND_CSD_REG - 1);
+#if defined(SAOLALINK_DEVEBOX_V2)
+    memcpy(_sd_cid, cid_raw_data, sizeof(_sd_cid));
+    _sd_cid_crc = crc7;
+    _sd_cid_received = true;
+#endif
     if (crc7 == cid_raw_data[SD_SIZE_OF_CID_AND_CSD_REG - 1]) {
       card->cid.MID = cid_raw_data[0];
       memcpy(&card->cid.OID[0], &cid_raw_data[1], SD_SIZE_OF_OID);

@@ -44,6 +44,9 @@ uint32_t abnormalRebootGetCause();
 // Retrieve last reboot command
 uint32_t abnormalRebootGetCmd();
 
+// Pass a command through the reserved reboot-data word to the next reset.
+void abnormalRebootSetCmd(uint32_t cmd);
+
 // Reset reboot command
 void abnormalRebootResetCmd();
 

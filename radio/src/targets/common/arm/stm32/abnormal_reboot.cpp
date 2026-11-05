@@ -89,6 +89,11 @@ uint32_t abnormalRebootGetCmd()
   return _reboot_cmd;
 }
 
+void abnormalRebootSetCmd(uint32_t cmd)
+{
+  _reboot_cmd = cmd;
+}
+
 void abnormalRebootResetCmd()
 {
   _reboot_cmd = 0;

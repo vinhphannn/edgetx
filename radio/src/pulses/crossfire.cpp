@@ -34,7 +34,11 @@
 
 #if defined(SAOLALINK_DEVEBOX)
 #include "os/time.h"
+#if defined(SAOLALINK_DEVEBOX_V2)
+#include "targets/taranis/devebox_v2/rf_monitor.h"
+#else
 #include "targets/taranis/saolalink_v1/rf_monitor.h"
+#endif
 DeveboxRFMonitor deveboxRF;
 #endif
 

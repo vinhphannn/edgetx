@@ -1129,7 +1129,7 @@ LEGACY_NAMES = [
         }
     },
     {
-        "targets": {"pocket", "saolalinkv1"},
+        "targets": {"pocket", "saolalinkv1", "devebox8v2"},
         "inputs": {
             "LH": {
                 "yaml": "Rud",

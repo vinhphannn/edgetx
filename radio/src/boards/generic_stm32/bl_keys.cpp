@@ -3,6 +3,7 @@
 
 #if defined(SAOLALINK_DEVEBOX)
 #include "stm32_cmsis.h"
+#include "targets/taranis/saolalink_v1/devebox_boot.h"
 void boardBLEarlyInit()
 {
   // RTN (PC5) is active LOW. Set its pull-up before the boot input settling
@@ -11,6 +12,15 @@ void boardBLEarlyInit()
   (void)RCC->AHB1ENR;
   GPIOC->MODER &= ~(3U << (5 * 2));
   GPIOC->PUPDR = (GPIOC->PUPDR & ~(3U << (5 * 2))) | (1U << (5 * 2));
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(RTCLOCK)
+  // Let the RTC crystal settle during the USB upload window. Do not wait for
+  // LSERDY here, reset the backup domain, or change the existing RTC source.
+  RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+  (void)RCC->APB1ENR;
+  PWR->CR |= PWR_CR_DBP;
+  (void)PWR->CR;
+  RCC->BDCR |= RCC_BDCR_LSEON;
+#endif
 }
 
 bool boardBLStartCondition()
@@ -18,9 +28,7 @@ bool boardBLStartCondition()
   // Sample only at startup. Also stay in recovery for blank/invalid app.
   const uint32_t sp = *(const uint32_t*)APP_START_ADDRESS;
   const uint32_t pc = *(const uint32_t*)(APP_START_ADDRESS + 4);
-  const bool stack_ok = (sp > 0x20000000 && sp <= 0x20020000) ||
-                        (sp > 0x10000000 && sp <= 0x10010000);
-  const bool app_ok = stack_ok && (pc & 1) && pc >= APP_START_ADDRESS && pc < 0x08080000;
+  const bool app_ok = deveboxAppVectorsValid(sp, pc);
   return !(GPIOC->IDR & (1U << 5)) || !app_ok;
 }
 #elif defined(BOOTLOADER_KEYS)

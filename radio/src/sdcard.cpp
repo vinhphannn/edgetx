@@ -26,6 +26,7 @@
 #include "hal/storage.h"
 
 #include "edgetx.h"
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
 #include "lib_file.h"
 
 #if FF_MAX_SS != FF_MIN_SS
@@ -512,11 +513,24 @@ void sdMount()
   TRACE("sdMount");
 
   storagePreMountHook();
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  uint32_t started = timersGetMsTick();
+#endif
   
   if (f_mount(&g_FATFS_Obj, "", 1) == FR_OK) {
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+    deveboxStartupTiming.sdMountMs = timersGetMsTick() - started;
+    const char* previousStage = deveboxStartupStatus;
+    deveboxStartupStatus = "counting SD free space";
+    started = timersGetMsTick();
+#endif
     // call sdGetFreeSectors() now because f_getfree() takes a long time first time it's called
     _g_FATFS_init = true;
     sdGetFreeSectors();
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+    deveboxStartupTiming.sdFreeMs = timersGetMsTick() - started;
+    deveboxStartupStatus = previousStage;
+#endif
 
 #if defined(LOG_TELEMETRY)
     f_open(&g_telemetryFile, LOGS_PATH "/telemetry.log", FA_OPEN_ALWAYS | FA_WRITE);

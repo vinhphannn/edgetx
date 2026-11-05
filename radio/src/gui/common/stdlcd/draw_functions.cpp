@@ -20,6 +20,10 @@
  */
 
 #include "edgetx.h"
+#if defined(SAOLALINK_DEVEBOX_V2)
+#include "os/sleep.h"
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
+#endif
 #include <math.h>
 
 #include "hal/adc_driver.h"
@@ -506,6 +510,9 @@ void drawSourceValue(coord_t x, coord_t y, source_t source, LcdFlags flags)
 
 void drawFatalErrorScreen(const char * message)
 {
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupDisplayStop();
+#endif
   lcdClear();
   lcdDrawText((LCD_W - getTextWidth(message, 0, DBLSIZE)) / 2,
               LCD_H/2 - FH, message, DBLSIZE);
@@ -516,6 +523,9 @@ void drawFatalErrorScreen(const char * message)
 
 void runFatalErrorScreen(const char * message)
 {
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupStatus = message;
+#endif
   while (true) {
     backlightFullOn();
     drawFatalErrorScreen(message);
@@ -534,6 +544,10 @@ void runFatalErrorScreen(const char * message)
         break;
       }
       WDG_RESET();
+#if defined(SAOLALINK_DEVEBOX_V2)
+      // Let the CDC CLI task run while a bare board is showing e.g. NO SD CARD.
+      sleep_ms(10);
+#endif
     }
   }
 }

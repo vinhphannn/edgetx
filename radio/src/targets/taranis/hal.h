@@ -910,6 +910,8 @@
 #endif
 
 // Board-specific overrides apply after the shared Pocket-compatible HAL.
-#if defined(RADIO_SAOLALINKV1)
+#if defined(SAOLALINK_DEVEBOX_V2)
+  #include "devebox_v2/hal_overrides.h"
+#elif defined(RADIO_SAOLALINKV1)
   #include "saolalink_v1/hal_overrides.h"
 #endif

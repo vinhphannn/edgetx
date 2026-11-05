@@ -1,9 +1,36 @@
 # SaolaLink V1 and DevEBox development target
 
-SaolaLink V1 starts from the RadioMaster Pocket hardware definition, with a
-separate identity and HAL overrides. The standard target uses a 12 MHz HSE.
+SaolaLink V1 has its own target identity, hardware definition and HAL
+overrides within EdgeTX. The standard target uses a 12 MHz HSE.
 The DevEBox configuration uses an STM32F407VET6 with an 8 MHz HSE, 512 KiB
 flash and a 32 KiB bootloader region.
+
+## Base / V2 split — 2026-11-04
+
+The base DevEBox hardware configuration is restored to Git checkpoint
+`de56c3127e`, retaining the corrected 2-second USB upload window below.
+Its OLED remains SPI3 and its SD clocks/startup behavior match that checkpoint.
+The second radio now uses the independent [DevEBox V2 target](saolalink-devebox-v2.md),
+`PCBREV=DEVEBOX_V2`, with early startup diagnostics.
+On 2026-11-05 V2 switched from I²C to the same SSD1309 SPI3 driver/wiring
+as Base. Studio offers separate Base SPI and V2 SPI profiles.
+The temporary V2 slow-SD limits were removed on 2026-11-05; SD clocks now
+match Base. The updated V2 bootloader starts the RTC crystal during the USB
+window, overlapping the cold-start RTC wait measured on this board.
+
+## Current status — 2026-10-24
+
+The user reports stable flight with the wired DevEBox prototype. Current
+firmware includes OLED, SD-backed radio/model settings, four gimbal axes,
+seven keys, rotary, SA/SB/SC/SD, S1/S2, internal CRSF, PD0/PD1 power control
+and the 20 kΩ / 10 kΩ battery divider. RF OFF in a saved model is preserved.
+Trims and external RF remain disabled; RF BOOT PB1 remains high-impedance.
+The current bootloader uses RTN PC5, not the earlier PA0 recovery key.
+
+The dated sections below are historical checkpoints: volatile settings,
+disabled peripherals and pending tests describe those earlier versions.
+The final flight checkpoint is user-reported validation of this prototype,
+not qualification of a future custom PCB.
 
 ## Build
 
@@ -20,7 +47,7 @@ cmake -S . -B build/saolalink-devebox \
 cmake --build build/saolalink-devebox --target firmware --parallel 4
 ```
 
-For the 12 MHz Pocket-compatible SaolaLink baseline, use
+For the 12 MHz standard SaolaLink target, use
 `SAOLALINK_HSE_HZ=12000000` and `SAOLALINK_DEVEBOX=OFF` in a separate build
 directory. SaolaLink Studio lives outside this firmware repository and is
 not included here.
@@ -29,8 +56,14 @@ not included here.
 
 - Install `arm-none-eabi/bootloader.bin` once using STM32 ROM DFU at
   `0x08000000` (BOOT0 high).
-- Set BOOT0 low. Hold the active-high PA0 key while resetting to enter the
-  SaolaLink USB DFU bootloader. Release the key after reset.
+- Set BOOT0 low. In updated Studio, click Upload firmware / wait for USB,
+  confirm, then connect USB or reset. The bootloader offers a 2-second window.
+  A valid DfuSe SET_ADDRESS command in the app region captures it; enumeration,
+  idle GETSTATUS and discovery scans do not. Studio waits up to 60 seconds.
+- Without a capture, a valid app starts after the window. RTN PC5 still forces
+  indefinite DFU. A blank/invalid application stays in recovery without RTN.
+  Install this loader once through ROM DFU; older loaders still require RTN
+  (PC5), or PA0 for the oldest version. Application updates do not replace it.
 - The loader exposes `@SaolaLink App /0x08008000/02*016Kg,01*064Kg,03*128Kg`.
   Its callbacks permit accesses only to the application region, excluding
   boot sectors. This is software protection, not option-byte protection.
@@ -38,9 +71,35 @@ not included here.
   32768 bytes of the full bootloader-inclusive `firmware.bin`. Studio
   generates this application-only file and validates its manifest/hash.
   Never send the full image to the application address.
-- Reset manually after upload. Without PA0 held, a plausible application
-  vector table causes the loader to jump into EdgeTX. A blank/invalid vector
-  table keeps it in DFU; this check is not a complete image-integrity check.
+- Transfers erase the first app sector before other sectors, accept both upfront
+  and interleaved sector erases, write sequentially,
+  and compare each programmed transfer with flash. The initial stack word remains
+  erased until successful manifestation (`dfu-util -s 0x08008000:leave`). This
+  keeps interrupted erase/write sessions in recovery after power loss. Retrying
+  starts with another first-sector erase. The vector check on startup is a
+  plausibility check, not a complete checksum or cryptographic verification.
+- Manifestation and an unused window both reset via a one-shot app command.
+  The next boot consumes it and jumps before USB/timer initialization, avoiding
+  another delay and leaving those peripherals clean for the application. RTN
+  and an invalid app override this command. The reset clears sticky reset flags
+  so a preceding watchdog reset cannot cause a boot-window loop.
+- The STM32F40x linker layout reserves the top 8 bytes of CCM above the stack:
+  initial MSP `0x1000FFF8`, persistent reboot command `0x1000FFFC`. Previously
+  the command overlapped startup's descending stack and could be overwritten,
+  preventing the one-shot jump into the application after reset.
+- Successful manifestation returns its status while USB remains connected.
+  The foreground loop disconnects and resets 250 ms later. Resetting from the
+  USB completion callback interrupted the host's final GETSTATUS and caused
+  dfu-util status 74 despite a complete data transfer. Do not mask status 74
+  as success; install the corrected bootloader through ROM DFU and retry.
+- The V2 application starts CDC CLI in the menus task before loading SD
+  settings. A missing card or the first-run STORAGE WARNING can wait for keys
+  before `perMain()`; previously that also hid CDC and the heartbeat. The fatal
+  SD loop now yields so the CLI task remains usable. Saved USB/serial modes are
+  restored after startup. `devboard` reports the active startup/error message.
+- On V2, PA1 toggles every 100 ms while initializing or waiting on startup prompts,
+  then every 500 ms from the main task. The fast indication is not proof that
+  radio initialization or calibration has completed.
 - The running application exposes USB CDC CLI (`0483:5740`). Send `devboard`
   with LF ending for identity and SD mount status; `ls /` lists the SD root.
   Both ROM and software DFU use `0483:df11`, distinguished by media name.
@@ -52,15 +111,31 @@ not included here.
 | MicroSD SPI, 3.3 V | CS PB12, CLK PB13, MISO PB14, MOSI PB15, common GND |
 | SSD1309 OLED 128x64 SPI | SCK PC10, MOSI/SDA PC12, RES PD12, DC PC11, CS PA15 |
 | DevEBox status LED | PA1 toggles from the EdgeTX main task |
-| Recovery key | PA0, active high |
+| Bootloader entry | RTN PC5, active low |
 
 The six-pin SD module has no card detect, so PD9 detection is disabled.
+The earlier V2 diagnostic profile capped SD SPI at 400 kHz; with APB1 at
+42 MHz normal transfers use 328125 Hz (/128). Initialization is reduced
+further to 164062 Hz (/256), the lowest SPI2 clock at this APB frequency.
+Previously initialization used 328125 Hz and transfers rose to 21 MHz.
+This conservative setting is for testing the long socket wires on the second
+prototype; it reduces SD throughput. Other targets keep their existing clocks.
+That diagnostic version's SD SCK, MOSI and CS outputs used the low GPIO slew setting instead
+of the SPI driver's very high setting, to test the external wire signal quality.
+`devboard` also reports the last SD initialization stage, command response,
+and actual SPI2 clock, so a failed handshake can be distinguished from a
+filesystem problem after successful initialization.
+These clock/slew restrictions were removed on 2026-11-05; current V2 uses
+the normal EdgeTX settings, approximately 328 kHz init and 21 MHz transfers.
+If a complete CID was received, it prints the raw bytes and expected/received
+CRC7. This identified a repeatable `asdfg` card CID with a zero CRC byte on
+the second prototype; the driver still rejects that invalid register.
 Keep the onboard SDIO socket empty. The selected OLED module requires 5 V
 module power; verify that the actual module accepts 3.3 V SPI logic. OLED
-SPI runs at 2.625 MHz and both scan axes are reversed for a 180-degree
-rotation relative to the initial mounting. No external backlight is needed.
+SPI runs at 2.625 MHz; the current enclosure orientation uses segment/COM
+commands A1/C8 (updated 2026-10-21). No external backlight is needed.
 
-## Development limits and observed results (2026-10-16)
+## Historical checkpoint — Development limits and observed results (2026-10-16)
 
 The user confirmed USB DFU application upload, a responding USB CDC CLI,
 SD FAT32 directory listing and OLED display output. The rotated image still
@@ -86,7 +161,7 @@ the board lacks the Pocket PA9 VBUS-sense connection. BOR option bytes are
 not automatically modified. USB-powered and externally powered 5 V rails
 must be isolated before combining supplies on the DevEBox board.
 
-## Checkpoint: physical navigation keys verified (2026-10-17)
+## Historical checkpoint — Checkpoint: physical navigation keys verified (2026-10-17)
 
 The user supplied USB CDC logs showing PRESSED GPIO=0 and RELEASED GPIO=1
 for all six wired keys: RTN PC5, PAGE> PD7, PAGE< PD3, TELE PD2, SYS PE10,
@@ -111,7 +186,7 @@ requires no VCC connection; verify A/B/common and any independent switch
 with its datasheet or a continuity meter before soldering. Two mounting tabs
 are not automatically electrical common contacts.
 
-## Encoder and Enter enabled
+## Historical checkpoint — Encoder and Enter enabled
 
 After the six-key checkpoint, enable Enter PD14 and rotary PE9/PE14.
 Override rotary B's GPIO, EXTI line, SYSCFG line and packed position bits;
@@ -140,7 +215,7 @@ The exact physical terminal order has not been recorded; do not infer it
 from the encoder housing. Direction, counts per detent and Enter hardware
 validation should be recorded separately when confirmed.
 
-## Four Hall gimbals and USB ADC logs — 2026-10-19
+## Historical checkpoint — Four Hall gimbals and USB ADC logs — 2026-10-19
 
 The DevEBox profile now uses LH=PA3/ADC1_IN3, LV=PA2/ADC1_IN2,
 RV=PC1/ADC1_IN11 and RH=PC2/ADC1_IN12. CMake derives a separate ADC JSON
@@ -164,7 +239,7 @@ bootloader; no bootloader update is required for this change.
 Host regression checks (using the build Python environment):
 `python -m unittest discover -s radio/util/tests -p test_saolalink_devebox.py -v`.
 
-## External power latch PD0/PD1 — 2026-10-19
+## Historical checkpoint — External power latch PD0/PD1 — 2026-10-19
 
 The application now asserts PD0 HIGH in pwrInit before LCD/SD initialization.
 PD0 drives the external latch's NPN through its base resistor. PD1 is an
@@ -194,7 +269,7 @@ this is not a USB voltage/charger detector. USB 5 V can keep the MCU powered
 after HOLD goes LOW. Isolate USB and external buck 5 V before combining
 supplies on a board without reverse-current protection. RF remains disabled.
 
-## Internal CRSF enabled — 2026-10-20
+## Historical checkpoint — Internal CRSF enabled — 2026-10-20
 
 This supersedes the earlier RF-disabled checkpoints. Internal RF defaults to
 CRSF at 400000 baud, normal 8N1, PB6 TX to module RX, PB7 RX from module TX,
@@ -226,7 +301,7 @@ RF host regression checks: `python -m unittest discover -s radio/util/tests
 resynchronization, external isolation, UART handoff counts, session reset,
 timeouts and tick wrap, alongside the gimbal/power checks.
 
-## RF hardware checkpoint and next wiring — 2026-10-21
+## Historical checkpoint — RF hardware checkpoint and next wiring — 2026-10-21
 
 The user reports the RF power circuit works after correcting miswired
 component pins. The earlier log (87 RX bytes, 7 CRC-valid frames, then STALE)
@@ -263,7 +338,7 @@ mapping also inverts its ADC reading. Only one potentiometer is currently
 defined. CLI automatic logs cover buttons/encoder, four gimbals, power and
 RF; switch/S1 change logging has not been added in this checkpoint.
 
-## RTN bootloader entry — 2026-10-21
+## Historical checkpoint — RTN bootloader entry — 2026-10-21
 
 This supersedes the PA0/KEY entry described in older checkpoints. Hold the
 wired RTN button (PC5 LOW) before power-on or RESET to stay in USB DFU.
@@ -288,7 +363,7 @@ this migration. Studio's selector/upload workflow is otherwise unchanged.
 Host regression compiles the actual entry hook and tests active-low RTN,
 PA0 independence, preservation of unrelated GPIOs and invalid-vector recovery.
 
-## Wired switches and two potentiometers — 2026-10-21
+## Historical checkpoint — Wired switches and two potentiometers — 2026-10-21
 
 This supersedes the earlier switch wiring table. The user has wired SA
 PC13 (2POS), SB PA5/PE15 (3POS), SC PD11 (now 2POS) and SD PE8 (2POS).
@@ -318,7 +393,7 @@ noise/movement, log control and reconnect snapshots. Hardware still needs
 user verification after application upload. No bootloader update is needed
 for this switch/pot change.
 
-## OLED enclosure orientation — 2026-10-21
+## Historical checkpoint — OLED enclosure orientation — 2026-10-21
 
 The user mounted the OLED rotated 180 degrees relative to its previous
 installation. Disable SAOLALINK_OLED_ROTATE_180 in the DevEBox override:
@@ -327,7 +402,7 @@ This turns the currently displayed image another 180 degrees, without
 changing the framebuffer, wiring or other targets. Update application only.
 S2 wiring is being checked by the user; its ADC and log filter are unchanged.
 
-## User-verified checkpoint and persistence diagnosis — 2026-10-21
+## Historical checkpoint — User-verified checkpoint and persistence diagnosis — 2026-10-21
 
 The user reports the current hardware integration is working after the
 display orientation update and requests a Git checkpoint. This includes
@@ -357,7 +432,7 @@ settings, and verify calibration/stick mode/model selection across shutdown
 and restart. Persistence behavior is unchanged in this checkpoint; this
 entry records the diagnosis rather than claiming a fix or hardware test.
 
-## SD settings persistence restored — 2026-10-21
+## Historical checkpoint — SD settings persistence restored — 2026-10-21
 
 This supersedes the volatile bring-up behavior above. Startup now follows
 the normal EdgeTX SD lifecycle: load `/RADIO/radio.yml`, validate/recover
@@ -394,7 +469,7 @@ After application upload, complete calibration and choose stick mode, exit
 the setup screen, then shut down normally with the power button and restart.
 Verify the values and selected model survive on the physical board.
 
-## Battery divider 20 kΩ / 10 kΩ — 2026-10-21
+## Historical checkpoint — Battery divider 20 kΩ / 10 kΩ — 2026-10-21
 
 DevEBox battery sensing uses PC0 / ADC1_IN10. Connect 20 kΩ from the
 switched 2S supply after the main power FET and before the buck to PC0,
@@ -416,7 +491,7 @@ pass their existing ratio/offset checks. Debug build succeeds; application
 size is 473120 bytes. Physical voltage accuracy still needs comparison
 against a multimeter after upload.
 
-## Flight-tested DevEBox checkpoint — 2026-10-24
+## Latest hardware checkpoint — Flight-tested DevEBox checkpoint — 2026-10-24
 
 The user reports that the DevEBox transmitter has flown stably with the
 current firmware and the pin adaptations for the wired development board.

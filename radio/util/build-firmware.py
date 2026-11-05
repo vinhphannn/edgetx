@@ -154,9 +154,12 @@ def main():
         cmake_options["PCBREV"] = "BOXER"
         firmware_options = options_radiomaster_boxer
         maxsize = 65536 * 8 * 2
-    elif board_name in ("pocket", "saolalinkv1"):
+    elif board_name in ("pocket", "saolalinkv1", "devebox8v2"):
         cmake_options["PCB"] = "X7"
-        cmake_options["PCBREV"] = "SAOLALINK_V1" if board_name == "saolalinkv1" else "POCKET"
+        cmake_options["PCBREV"] = {"pocket": "POCKET", "saolalinkv1": "SAOLALINK_V1", "devebox8v2": "DEVEBOX_V2"}[board_name]
+        if board_name == "devebox8v2":
+            cmake_options["SAOLALINK_HSE_HZ"] = "8000000"
+            cmake_options["SAOLALINK_DEVEBOX"] = "ON"
         firmware_options = options_radiomaster_pocket
         maxsize = 65536 * 8
     elif board_name == "mt12":

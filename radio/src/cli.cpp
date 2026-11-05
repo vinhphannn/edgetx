@@ -46,10 +46,20 @@
 
 #include "cli.h"
 #if defined(SAOLALINK_DEVEBOX)
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+#include "sdcard_spi.h"
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2)
+#include "targets/taranis/devebox_v2/devebox_keys.h"
+#include "targets/taranis/devebox_v2/button_monitor.h"
+#include "targets/taranis/devebox_v2/gimbal_monitor.h"
+#include "targets/taranis/devebox_v2/rf_monitor.h"
+#else
 #include "targets/taranis/saolalink_v1/devebox_keys.h"
 #include "targets/taranis/saolalink_v1/button_monitor.h"
 #include "targets/taranis/saolalink_v1/gimbal_monitor.h"
 #include "targets/taranis/saolalink_v1/rf_monitor.h"
+#endif
 #include "hal/rotary_encoder.h"
 #endif
 
@@ -58,6 +68,7 @@
 #include <new>
 #include <stdarg.h>
 #include <string.h>
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
 
 #include "lua/lua_states.h"
 #include "pdm_wav_recorder.h"
@@ -2613,10 +2624,78 @@ static int cliButtons(const char** argv)
   return 0;
 }
 
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(LUA)
+static int cliAuxUart(const char **argv)
+{
+  const char* action = argv[1];
+  if (action && !strcmp(action, "on")) {
+    serialSetMode(SP_AUX1, UART_MODE_LUA);
+    serialInit(SP_AUX1, UART_MODE_LUA);
+    storageDirty(EE_GENERAL);
+  } else if (action && strcmp(action, "status")) {
+    cliSerialPrint("Usage: auxuart [status|on]");
+    return -1;
+  }
+
+  void* ctx = nullptr;
+  const etx_serial_driver_t* drv = nullptr;
+  const bool active = serialGetPortCtx(SP_AUX1, &ctx, &drv);
+  cliSerialPrint("AUX1 USART3: TX=PB10 RX=PB11 | mode=%d baud=%lu active=%u",
+                 serialGetMode(SP_AUX1), (unsigned long)serialGetBaudrate(SP_AUX1),
+                 unsigned(active));
+  return 0;
+}
+#endif
+
 static int cliDevBoard(const char **)
 {
+#if defined(SAOLALINK_DEVEBOX_V2)
+  cliSerialPrint("EdgeTX DevEBox 8MHz V2 | HSE 8MHz | SYSCLK %lu | app 0x08008000", (unsigned long)SystemCoreClock);
+  cliSerialPrint("USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | settings on SD", sdMounted() ? "mounted" : "not mounted");
+#else
   cliSerialPrint("EdgeTX SaolaLink DevEBox | HSE 8MHz | SYSCLK %lu | app 0x08008000", (unsigned long)SystemCoreClock);
   cliSerialPrint("USB CDC CLI | SD SPI2: %s | OLED SSD1309 SPI3 | settings on SD", sdMounted() ? "mounted" : "not mounted");
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  void* auxCtx = nullptr;
+  const etx_serial_driver_t* auxDrv = nullptr;
+  cliSerialPrint("AUX1 USART3: TX=PB10 RX=PB11 | mode=%d baud=%lu active=%u | CR1=0x%04lX",
+                 serialGetMode(SP_AUX1), (unsigned long)serialGetBaudrate(SP_AUX1),
+                 unsigned(serialGetPortCtx(SP_AUX1, &auxCtx, &auxDrv)),
+                 (unsigned long)USART3->CR1);
+  cliSerialPrint("Startup: %s", deveboxStartupStatus);
+  cliSerialPrint("Startup progress frames: %lu", (unsigned long)deveboxStartupTiming.progressFrames);
+  cliSerialPrint("Startup display ms: %lu", (unsigned long)deveboxStartupTiming.displayMs);
+  cliSerialPrint("Startup timing ms: RTC=%lu first-display=%lu mount=%lu free-scan=%lu radio=%lu model=%lu",
+                 (unsigned long)deveboxStartupTiming.rtcMs,
+                 (unsigned long)deveboxStartupTiming.firstDisplayAtMs,
+                 (unsigned long)deveboxStartupTiming.sdMountMs,
+                 (unsigned long)deveboxStartupTiming.sdFreeMs,
+                 (unsigned long)deveboxStartupTiming.radioMs,
+                 (unsigned long)deveboxStartupTiming.modelMs);
+  cliSerialPrint("RTC clock: LSE-ready=%u source=%lu",
+                 unsigned(!!(RCC->BDCR & RCC_BDCR_LSERDY)),
+                 (unsigned long)((RCC->BDCR & RCC_BDCR_RTCSEL) >> 8));
+  cliSerialPrint("OLED SPI3: SCK=PC10 MOSI=PC12 DC=PC11 CS=PA15 RESET=PD12 | uptime=%lu ms",
+                 (unsigned long)timersGetMsTick());
+  LL_RCC_ClocksTypeDef clocks;
+  LL_RCC_GetSystemClocksFreq(&clocks);
+  uint32_t divider = 2UL << ((SPI2->CR1 & SPI_CR1_BR) >> SPI_CR1_BR_Pos);
+  cliSerialPrint("SD init: %s | CMD%u R1=0x%02X | SPI=%lu Hz",
+                 sdcard_spi_init_stage(), sdcard_spi_last_command(),
+                 sdcard_spi_last_response(),
+                 (unsigned long)(clocks.PCLK1_Frequency / divider));
+  cliSerialPrint("SD register data: %s", sdcard_spi_init_data_result());
+  const uint8_t* cid = sdcard_spi_cid_bytes();
+  if (cid) {
+    char hex[33];
+    for (unsigned i = 0; i < 16; ++i) {
+      snprintf(hex + 2 * i, 3, "%02X", cid[i]);
+    }
+    cliSerialPrint("SD CID: %s | CRC7 expected=0x%02X received=0x%02X",
+                   hex, sdcard_spi_cid_expected_crc(), cid[15]);
+  }
+#endif
   return 0;
 }
 #endif
@@ -2631,6 +2710,9 @@ const CliCommand cliCommands[] = {
   { "pots", cliPots, "[on|off] S1/S2 ADC values and automatic change logs" },
   { "power", cliPower, "[on|off] PD1 button / PD0 HOLD logs; does not switch power" },
   { "rf", cliRF, "[status|on|off|watch on|watch off] Internal CRSF diagnostics/control" },
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(LUA)
+  { "auxuart", cliAuxUart, "[status|on] AUX1 PB10 TX/PB11 RX, Lua serial 115200 8N1; keeps USB CLI" },
+#endif
 #endif
 #if defined(CLI_INPUT_INJECT)
   { "key", cliKey, "<key label> [<ms>]" },

@@ -24,3 +24,8 @@
 #include "hal/fatfs_diskio.h"
 
 extern const diskio_driver_t sdcard_spi_driver;
+
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+// Optional app progress hook; the bootloader leaves it unset.
+void sdcard_spi_set_progress_callback(void (*callback)());
+#endif

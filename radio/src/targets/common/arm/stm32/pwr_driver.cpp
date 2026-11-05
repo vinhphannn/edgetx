@@ -27,7 +27,11 @@
 
 #if defined(SAOLALINK_DEVEBOX) && !defined(BOOT)
 #include "os/time.h"
+#if defined(SAOLALINK_DEVEBOX_V2)
+#include "targets/taranis/devebox_v2/power_button.h"
+#else
 #include "targets/taranis/saolalink_v1/power_button.h"
+#endif
 static DeveboxPowerButton deveboxPowerButton;
 #endif
 

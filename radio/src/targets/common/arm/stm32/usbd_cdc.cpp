@@ -136,8 +136,10 @@ static int8_t VCP_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
   cdcConnected = false;
+#if !defined(SAOLALINK_DEVEBOX_V2)
   receiveDataCb = nullptr;
   baudRateCb = nullptr;
+#endif
   APP_Tx_ptr_in = 0;
   APP_Tx_ptr_out = 0;
   return (USBD_OK);
@@ -397,9 +399,24 @@ static void* usbSerialInit(void*, const etx_serial_init*)
   return (void*)1;
 }
 
+#if defined(SAOLALINK_DEVEBOX_V2)
+static void usbSerialDeinit(void*)
+{
+  // The serial owner, rather than a host USB reset, releases these callbacks.
+  // V2 starts CLI before enumeration; class deinit during enumeration must
+  // not turn the still-configured port into a transmit-only connection.
+  receiveDataCb = nullptr;
+  baudRateCb = nullptr;
+}
+#endif
+
 static const etx_serial_driver_t usbSerialDriver = {
   .init = usbSerialInit,
+#if defined(SAOLALINK_DEVEBOX_V2)
+  .deinit = usbSerialDeinit,
+#else
   .deinit = nullptr,
+#endif
   .sendByte = usbSerialPutc,
   .sendBuffer = nullptr,
   .waitForTxCompleted = nullptr,

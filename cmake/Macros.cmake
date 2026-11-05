@@ -113,7 +113,9 @@ function(AddHardwareDefTarget output)
   #   DEPENDS ${HW_DEF_SRC} ${RADIO_DIRECTORY}/util/hw_defs/generate_hw_def.py
   # )
 
-  if(RADIO_SAOLALINKV1)
+  if(SAOLALINK_DEVEBOX_V2)
+    list(APPEND HW_DEF_GENERATED ${RADIO_SRC_DIR}/targets/taranis/devebox_v2/hal_overrides.h)
+  elseif(RADIO_SAOLALINKV1)
     list(APPEND HW_DEF_GENERATED ${RADIO_SRC_DIR}/targets/taranis/saolalink_v1/hal_overrides.h)
   endif()
 

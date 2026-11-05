@@ -508,7 +508,19 @@ static uint8_t *USBD_DFU_GetCfgDesc(uint16_t *length)
   */
 static uint8_t USBD_DFU_EP0_RxReady(USBD_HandleTypeDef *pdev)
 {
+#if defined(SAOLALINK_DEVEBOX) && defined(BOOT)
+  USBD_DFU_HandleTypeDef *hdfu = (USBD_DFU_HandleTypeDef *)pdev->pClassDataCmsit[pdev->classId];
+  if (hdfu != NULL && hdfu->dev_state == DFU_STATE_DNLOAD_SYNC &&
+      hdfu->wblock_num == 0U && hdfu->wlength == 5U &&
+      hdfu->buffer.d8[0] == DFU_CMD_SETADDRESSPOINTER)
+  {
+    uint32_t address = hdfu->buffer.d8[1] | ((uint32_t)hdfu->buffer.d8[2] << 8) |
+                       ((uint32_t)hdfu->buffer.d8[3] << 16) | ((uint32_t)hdfu->buffer.d8[4] << 24);
+    saolalinkDfuSetAddress(address);
+  }
+#else
   UNUSED(pdev);
+#endif
 
   return (uint8_t)USBD_OK;
 }
@@ -1337,6 +1349,17 @@ static void DFU_Leave(USBD_HandleTypeDef *pdev)
     hdfu->dev_status[3] = 0U;
     hdfu->dev_status[4] = hdfu->dev_state;
 
+#if defined(SAOLALINK_DEVEBOX) && defined(BOOT)
+    /* Commit the deferred app vectors before disconnecting. On failure keep
+       USB available and report an error instead of leaving a silent device. */
+    if (DfuInterface->LeaveDFU(hdfu->data_ptr) != USBD_OK)
+    {
+      hdfu->dev_state = DFU_STATE_ERROR;
+      hdfu->dev_status[0] = DFU_ERROR_VERIFY;
+      hdfu->dev_status[4] = hdfu->dev_state;
+      return;
+    }
+#else
     /* Disconnect the USB device */
     (void)USBD_Stop(pdev);
 
@@ -1347,8 +1370,10 @@ static void DFU_Leave(USBD_HandleTypeDef *pdev)
     /* Generate system reset to allow jumping to the user code */
     NVIC_SystemReset();
 #endif /* USBD_DFU_VENDOR_EXIT_ENABLED */
+#endif /* SAOLALINK_DEVEBOX && BOOT */
 
-    /* The next instructions will not be reached (system reset) */
+    /* SaolaLink defers its reset to the foreground so the host can complete
+       this control transfer and poll MANIFEST_WAIT_RESET without a USB error. */
   }
 }
 

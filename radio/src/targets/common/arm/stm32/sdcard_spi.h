@@ -276,6 +276,15 @@ typedef enum {
 
 int sdcard_spi_init(const stm32_spi_t* spi, sdcard_info_t* card);
 
+#if defined(SAOLALINK_DEVEBOX_V2)
+const char* sdcard_spi_init_stage();
+uint8_t sdcard_spi_last_command();
+uint8_t sdcard_spi_last_response();
+const char* sdcard_spi_init_data_result();
+const uint8_t* sdcard_spi_cid_bytes();
+uint8_t sdcard_spi_cid_expected_crc();
+#endif
+
 uint64_t sdcard_spi_get_capacity(sdcard_info_t* card);
 
 uint32_t sdcard_spi_get_sector_count(sdcard_info_t* card);

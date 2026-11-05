@@ -56,10 +56,29 @@ static const stm32_spi_t _sd_spi_hw = {
 
 static uint32_t _sdcard_sectors;
 
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+static void (*sdcardProgressCallback)();
+
+void sdcard_spi_set_progress_callback(void (*callback)())
+{
+  sdcardProgressCallback = callback;
+}
+
+static void sdcard_spi_progress()
+{
+  const auto callback = sdcardProgressCallback;
+  if (callback) callback();
+}
+#endif
+
 static DSTATUS sdcard_spi_initialize(BYTE lun)
 {
   sdcard_info_t card_info;
-  if (sdcard_spi_init(&_sd_spi_hw, &card_info) != SDCARD_SPI_OK) {
+  const auto result = sdcard_spi_init(&_sd_spi_hw, &card_info);
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  sdcard_spi_progress();
+#endif
+  if (result != SDCARD_SPI_OK) {
     return STA_NOINIT;
   }
 
@@ -87,6 +106,9 @@ static DRESULT sdcard_spi_read(BYTE lun, BYTE * buff, DWORD sector, UINT count)
 
   sd_rw_response_t state;
   sdcard_spi_read_blocks(sector, buff, SD_HC_BLOCK_SIZE, count, &state);
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  sdcard_spi_progress();
+#endif
   if (state == SD_RW_OK) {
     return RES_OK;
   }
@@ -100,6 +122,9 @@ static DRESULT sdcard_spi_write(BYTE lun, const BYTE* buff, DWORD sector, UINT c
 
   sd_rw_response_t state;
   sdcard_spi_write_blocks(sector, buff, SD_HC_BLOCK_SIZE, count, &state);
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  sdcard_spi_progress();
+#endif
   if (state == SD_RW_OK) {
     return RES_OK;
   }

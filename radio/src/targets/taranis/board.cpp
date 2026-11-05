@@ -21,6 +21,7 @@
 
 #include "stm32_hal_ll.h"
 #include "stm32_gpio.h"
+#include "devebox_v2/devebox_diagnostics.h"
 
 #include "hal/adc_driver.h"
 #include "hal/trainer_driver.h"
@@ -266,7 +267,13 @@ void boardInit()
 #endif
 
 #if defined(RTCLOCK)
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  const uint32_t rtcStarted = timersGetMsTick();
+#endif
   rtcInit(); // RTC must be initialized before rambackupRestore() is called
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupTiming.rtcMs = timersGetMsTick() - rtcStarted;
+#endif
 #endif
 
   backlightInit();

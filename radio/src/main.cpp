@@ -26,9 +26,31 @@
 #include "hal/audio_driver.h"
 
 #include "edgetx.h"
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+const char* volatile deveboxStartupStatus = "hardware initialization";
+DeveboxStartupTiming deveboxStartupTiming = {};
+#endif
 #if defined(SAOLALINK_DEVEBOX) && !defined(HAPTIC)
+#if defined(SAOLALINK_DEVEBOX_V2)
 // The STM32 timer calls this hook even when the bare board has no haptic motor.
+static volatile bool deveboxMainRunning;
+void per5ms()
+{
+  // Fast heartbeat during initialization, including SD/first-run prompts
+  // which can wait indefinitely before the first perMain() invocation.
+  static uint8_t startupTicks;
+  if (!deveboxMainRunning && ++startupTicks >= 20) {
+    startupTicks = 0;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    (void)RCC->AHB1ENR;
+    GPIOA->MODER = (GPIOA->MODER & ~(3U << 2)) | (1U << 2);
+    GPIOA->ODR ^= (1U << 1);
+  }
+}
+#else
 void per5ms() {}
+#endif
 #endif
 #include "lua/lua_states.h"
 
@@ -574,6 +596,12 @@ __attribute__((weak)) void customUIActions() {}
 void perMain()
 {
 #if defined(SAOLALINK_DEVEBOX)
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupStatus = "running";
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(HAPTIC)
+  deveboxMainRunning = true;
+#endif
   static tmr10ms_t last_led = 0;
   if (get_tmr10ms() - last_led >= 50) {
     last_led = get_tmr10ms();

@@ -29,6 +29,10 @@
 #endif
 
 #include "edgetx.h"
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+#include "diskio_spi.h"
+#endif
 #include "io/frsky_firmware_update.h"
 #include "hal/adc_driver.h"
 #include "hal/switch_driver.h"
@@ -462,6 +466,11 @@ void generalDefault()
   g_eeGeneral.pwrOffSpeed = 0; // YAML delay 0 means hold for 2 seconds.
   g_eeGeneral.internalModule = MODULE_TYPE_CROSSFIRE;
   g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(1); // 400 kbaud
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(LUA)
+  // Unassigned AUX1 is a bidirectional UART for a future host connection.
+  // New-radio default only: preserve the mode loaded from an existing SD.
+  serialSetMode(SP_AUX1, UART_MODE_LUA);
 #endif
 
   g_eeGeneral.chkSum = 0xFFFF;
@@ -1043,6 +1052,11 @@ void checkAlarm() // added by Gohst
 #if !defined(COLORLCD)
 void alert(const char * title, const char * msg , uint8_t sound)
 {
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  extern const char* volatile deveboxStartupStatus;
+  deveboxStartupDisplayStop();
+  deveboxStartupStatus = msg;
+#endif
   LED_ERROR_BEGIN();
 
   TRACE("ALERT %s: %s", title, msg);
@@ -1081,6 +1095,9 @@ void alert(const char * title, const char * msg , uint8_t sound)
   }
 
   LED_ERROR_END();
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupStatus = "initializing";
+#endif
 }
 #endif
 
@@ -1563,6 +1580,70 @@ void moveTrimsToOffsets() // copy state of 3 primary to subtrim
 // Overridden by simulator startup
 uint8_t startOptions = 0;
 
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+static bool deveboxStartupDisplayActive;
+static TaskHandle_t deveboxStartupDisplayOwner;
+static uint32_t deveboxStartupDisplayStarted;
+static uint32_t deveboxStartupLastPaint;
+
+void deveboxStartupDisplayStop()
+{
+  sdcard_spi_set_progress_callback(nullptr);
+  if (deveboxStartupDisplayActive)
+    deveboxStartupTiming.displayMs = timersGetMsTick() - deveboxStartupDisplayStarted;
+  deveboxStartupDisplayActive = false;
+}
+
+void deveboxStartupDisplayProgress()
+{
+  // Called between completed SD transactions, on the startup task only.
+  // CLI/audio reads must never touch this task's framebuffer.
+  if (!deveboxStartupDisplayActive ||
+      xTaskGetCurrentTaskHandle() != deveboxStartupDisplayOwner) return;
+  const uint32_t now = timersGetMsTick();
+  if (uint32_t(now - deveboxStartupLastPaint) < 40) return;
+  deveboxStartupLastPaint = now;
+
+  const uint32_t elapsed = now - deveboxStartupDisplayStarted;
+  const unsigned dots = elapsed >= 800 ? 4 : elapsed / 200;
+  lcdRefreshWait();
+  lcdClear();
+  for (unsigned i = 0; i < dots; ++i)
+    lcdDrawFilledRect(LCD_W / 2 - 18 + 10 * i, LCD_H / 2 - 3, 6, 6, SOLID, 0);
+  lcdRefresh();
+  lcdRefreshWait();
+  ++deveboxStartupTiming.progressFrames;
+}
+
+static void deveboxStartupDisplay()
+{
+  // Start the display and return immediately: storage reads drive the dots.
+  lcdSetContrast(true);
+  deveboxStartupTiming.firstDisplayAtMs = timersGetMsTick();
+  deveboxStartupTiming.progressFrames = 0;
+  deveboxStartupTiming.displayMs = 0;
+  deveboxStartupStatus = "loading SD/radio settings";
+  deveboxStartupDisplayOwner = xTaskGetCurrentTaskHandle();
+  deveboxStartupDisplayStarted = timersGetMsTick();
+  deveboxStartupLastPaint = deveboxStartupDisplayStarted - 40;
+  deveboxStartupDisplayActive = true;
+  sdcard_spi_set_progress_callback(deveboxStartupDisplayProgress);
+  deveboxStartupDisplayProgress();
+}
+
+static void deveboxStartupDisplayFinish()
+{
+  // Settings are already loaded. Finish just the remaining dot sequence.
+  // Errors stop the display immediately and must never be painted over.
+  while (deveboxStartupDisplayActive &&
+         uint32_t(timersGetMsTick() - deveboxStartupDisplayStarted) < 1000) {
+    deveboxStartupDisplayProgress();
+    sleep_ms(20);
+  }
+  deveboxStartupDisplayStop();
+}
+#endif
+
 void edgeTxInit()
 {
   TRACE("edgeTxInit");
@@ -1589,13 +1670,20 @@ void edgeTxInit()
   menuHandlers[0] = menuMainView;
   menuHandlers[1] = menuModelSelect;
 
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupDisplay();
+#else
   lcdRefreshWait();
   lcdClear();
   lcdRefresh();
   lcdRefreshWait();
 #endif
+#endif
 
   // Load radio.yml so radio settings can be used
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  const uint32_t radioStarted = timersGetMsTick();
+#endif
 #if defined(RTC_BACKUP_RAM)
   // Skip loading if EM startup and radio has RTC backup data
   if (!UNEXPECTED_SHUTDOWN())
@@ -1603,6 +1691,10 @@ void edgeTxInit()
 #else
   // No RTC backup - try and load even for EM startup
   storageReadRadioSettings(false);
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupTiming.radioMs = timersGetMsTick() - radioStarted;
+  deveboxStartupDisplayProgress();
 #endif
 
 #if defined(GUI) && !defined(COLORLCD)
@@ -1671,6 +1763,9 @@ void edgeTxInit()
 #endif
 
   // handling of storage for radios
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  const uint32_t modelStarted = timersGetMsTick();
+#endif
 #if defined(RTC_BACKUP_RAM) && !defined(SIMU)
   if (UNEXPECTED_SHUTDOWN()) {
     // SDCARD not available, try to restore last model from RAM
@@ -1683,6 +1778,10 @@ void edgeTxInit()
   }
 #else
   storageReadAll();
+#endif
+#if defined(SAOLALINK_DEVEBOX_V2) && !defined(SIMU)
+  deveboxStartupTiming.modelMs = timersGetMsTick() - modelStarted;
+  deveboxStartupDisplayFinish();
 #endif
 
   initSerialPorts();

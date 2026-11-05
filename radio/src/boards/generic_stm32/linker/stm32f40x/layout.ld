@@ -1,6 +1,9 @@
 
 /* Highest address of the user mode stack */
-STACK_ADDRESS = ORIGIN(CCM) + LENGTH(CCM); /* end of CCM */
+/* common_sections.ld places the persistent reboot command in the final word
+   of REGION_DATA (CCM). Keep it above the descending stack, including the
+   startup calls before bootloaderInitApp reads it. Preserve 8-byte alignment. */
+STACK_ADDRESS = ORIGIN(CCM) + LENGTH(CCM) - 8;
 
 /* Required amount of stack for interrupt stack (Main stack) */
 MAIN_STACK_SIZE = 1024;

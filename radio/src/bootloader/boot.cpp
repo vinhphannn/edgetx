@@ -35,6 +35,11 @@
 
 #define REBOOT_CMD_DFU 0x55464442
 
+#if defined(SAOLALINK_DEVEBOX)
+#include "targets/taranis/saolalink_v1/devebox_boot.h"
+static bool deveboxForceDFU;
+#endif
+
 #if !defined(SIMU)
 // Bootloader marker:
 // -> used to detect valid bootloader files
@@ -82,6 +87,20 @@ void bootloaderInitApp()
   delaysInit();
 
   bool boot_dfu = abnormalRebootGetCmd() == REBOOT_CMD_DFU; 
+#if defined(SAOLALINK_DEVEBOX)
+  // Normal startup offers the board's bounded USB window. A reset after timeout
+  // or successful manifestation consumes this command and jumps before USB
+  // initialization, so the application inherits no active USB/timer IRQs.
+  const bool boot_app = WAS_RESET_BY_SOFTWARE() &&
+                       abnormalRebootGetCmd() == DEVEBOX_BOOT_APP;
+  abnormalRebootResetCmd();
+  delay_ms(10);
+  deveboxForceDFU = boot_dfu || boardBLStartCondition();
+  if (boot_app && !deveboxForceDFU) {
+    boardBLPreJump();
+    jumpTo(APP_START_ADDRESS);
+  }
+#else
   if (!boot_dfu) {
     bool start_firmware = true;
 
@@ -102,6 +121,7 @@ void bootloaderInitApp()
     setSelectedUsbMode(USB_DFU_MODE);
 #endif
   }
+#endif
 
   pwrOn();
   __enable_irq();
@@ -128,8 +148,8 @@ int  bootloaderMain()
   bootloaderInitApp();
 
 #if defined(SAOLALINK_DEVEBOX)
-  extern void deveboxBootloaderDFU();
-  deveboxBootloaderDFU(); // EdgeTX USB DFU, application region only, no LCD/SD.
+  extern void deveboxBootloaderDFU(bool stay);
+  deveboxBootloaderDFU(deveboxForceDFU); // Application-only DFU, no LCD/SD.
   return 0;
 #endif
 

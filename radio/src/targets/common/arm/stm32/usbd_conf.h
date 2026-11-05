@@ -98,6 +98,12 @@
 #define USBD_SUPPORT_USER_STRING_DESC 1U
 #define USBD_DFU_XFER_SIZE 4096U
 
+#if defined(SAOLALINK_DEVEBOX) && defined(BOOT)
+#define USBD_DFU_VENDOR_EXIT_ENABLED 1U
+// Called only after a complete DfuSe SET_ADDRESS command has been decoded.
+void saolalinkDfuSetAddress(uint32_t address);
+#endif
+
 #if !defined(USBJ_EX)
 #define HID_IN_PACKET              19
 #endif

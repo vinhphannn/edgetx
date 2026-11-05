@@ -133,7 +133,7 @@ add_definitions(
 
 set(HW_DESC_JSON ${FLAVOUR}.json)
 set(HW_INPUT_DESC_JSON ${HW_DESC_JSON})
-if(RADIO_SAOLALINKV1 AND SAOLALINK_DEVEBOX)
+if(RADIO_SAOLALINKV1 AND SAOLALINK_DEVEBOX AND NOT SAOLALINK_DEVEBOX_V2)
   include(targets/taranis/saolalink_v1/adc_devebox.cmake)
   set(HW_INPUT_DESC_JSON ${ADC_HW_DESC_JSON})
 endif()
@@ -682,6 +682,13 @@ else()
 endif()
 
 # Bootloader
+# Changes to included linker layouts must relink both images, even if no
+# C/C++ file changed (for example a reserved reboot word or stack address).
+file(GLOB LINKER_DEPENDENCIES CONFIGURE_DEPENDS
+  "${LINKER_DIR}/*.ld"
+  "${LINKER_DIR}/${TARGET_LINKER_DIR}/*.ld"
+  "${LINKER_DIR}/${TARGET_LINKER_DIR}/bootloader/*.ld"
+)
 if(BOOTLOADER)
   add_subdirectory(bootloader)
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/bootloader)
@@ -692,6 +699,7 @@ add_executable(firmware ${SRC})
 link_libraries(firmware -lstdc++)
 add_dependencies(firmware ${RADIO_DEPENDENCIES})
 set_target_properties(firmware PROPERTIES EXCLUDE_FROM_ALL TRUE)
+set_property(TARGET firmware APPEND PROPERTY LINK_DEPENDS ${LINKER_DEPENDENCIES})
 
 if(ARCH STREQUAL ARM)
   target_link_libraries(firmware PRIVATE cmsis)

@@ -28,6 +28,9 @@
 #include "timers_driver.h"
 #include "hal/abnormal_reboot.h"
 #include "hal/watchdog_driver.h"
+#include "hal/usb_driver.h"
+#include "serial.h"
+#include "targets/taranis/devebox_v2/devebox_diagnostics.h"
 #include "pdm_wav_recorder.h"
 
 #include "tasks.h"
@@ -61,7 +64,27 @@ __attribute__((weak)) void customShutdownActions() {}
 
 static void menusTask()
 {
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(USB_SERIAL) && defined(CLI) && !defined(SIMU)
+  // The CLI task and its RX stream already exist (tasksStart creates them
+  // before menus). Make bring-up diagnostics available while edgeTxInit waits
+  // for an SD error/storage warning to be acknowledged on unwired keys.
+  serialInit(SP_VCP, UART_MODE_CLI);
+  setSelectedUsbMode(USB_SERIAL_MODE);
+  usbStart();
+  deveboxStartupStatus = "loading SD/radio settings";
+#endif
+
   edgeTxInit();
+
+#if defined(SAOLALINK_DEVEBOX_V2) && defined(USB_SERIAL) && defined(CLI) && !defined(SIMU)
+  // Once settings are loaded, honour the saved USB mode and serial function.
+  // perMain's normal connection handler will start the selected mode.
+  if (g_eeGeneral.USBMode != USB_SERIAL_MODE || serialGetMode(SP_VCP) != UART_MODE_CLI) {
+    usbStop();
+    serialStop(SP_VCP);
+    setSelectedUsbMode(USB_UNSELECTED_MODE);
+  }
+#endif
 
   mixerTaskInit();
 
